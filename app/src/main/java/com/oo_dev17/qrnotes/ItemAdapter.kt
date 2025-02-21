@@ -7,7 +7,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
 class ItemAdapter(
-    private val items: List<Item>, private val listener: ItemClickListener
+    private val items: List<QrNote>, private val listener: ItemClickListener
 ) : RecyclerView.Adapter<ItemAdapter.ItemViewHolder>() {
 
     class ItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -25,7 +25,7 @@ class ItemAdapter(
     override fun onBindViewHolder(holder: ItemViewHolder, position: Int) {
         val currentItem = items[position]
         holder.titleTextView.text = currentItem.title
-        holder.descriptionTextView.text = currentItem.description
+        holder.descriptionTextView.text = currentItem.content
 
         // Set the click listener on the item view
         holder.itemView.setOnClickListener {

@@ -38,9 +38,9 @@ class FirstFragment : Fragment(), ItemClickListener {
 
         // Sample data
         val items = listOf(
-            Item("Item 1", "Description 1"),
-            Item("Item 2", "Description 2"),
-            Item("Item 3", "Description 3")
+            QrNote("Item 1", "Description 1"),
+            QrNote("Item 2", "Description 2"),
+            QrNote("Item 3", "Description 3")
         )
 
         val adapter = ItemAdapter(items, this) // Pass 'this' as the listener
@@ -52,7 +52,7 @@ class FirstFragment : Fragment(), ItemClickListener {
         _binding = null
     }
 
-    override fun onItemClicked(item: Item) {
+    override fun onItemClicked(item: QrNote ) {
 
         findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)
 

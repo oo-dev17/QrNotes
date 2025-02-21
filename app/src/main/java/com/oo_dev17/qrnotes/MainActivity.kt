@@ -10,6 +10,7 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import android.view.Menu
 import android.view.MenuItem
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.firebase.FirebaseApp
 import com.oo_dev17.qrnotes.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() , SecondFragment.FabVisibilityListener{
@@ -20,6 +21,8 @@ class MainActivity : AppCompatActivity() , SecondFragment.FabVisibilityListener{
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        FirebaseApp.initializeApp(this)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)

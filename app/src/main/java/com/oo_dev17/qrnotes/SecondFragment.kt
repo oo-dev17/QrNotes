@@ -1,11 +1,20 @@
 package com.oo_dev17.qrnotes
 
 import FullscreenImageDialog
+import android.Manifest
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.media.MediaScannerConnection
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import android.text.util.Linkify
-import androidx.fragment.app.Fragment
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,22 +22,14 @@ import android.widget.EditText
 import android.widget.ImageView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.oo_dev17.qrnotes.databinding.FragmentSecondBinding
 import com.google.android.material.snackbar.Snackbar
-import android.Manifest
-import android.content.Intent
-import android.net.Uri
-import android.app.Activity
-import android.graphics.Bitmap
-import android.media.MediaScannerConnection
-import android.os.Build
-import android.os.Environment
-import android.provider.MediaStore
-import android.util.Log
-import androidx.core.content.FileProvider
+import com.google.firebase.firestore.FirebaseFirestore
+import com.oo_dev17.qrnotes.databinding.FragmentSecondBinding
 import java.io.File
 
 /**
@@ -72,8 +73,7 @@ class SecondFragment : Fragment() {
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
 
         _binding = FragmentSecondBinding.inflate(inflater, container, false)
@@ -123,11 +123,13 @@ class SecondFragment : Fragment() {
         }
         return binding.root
     }
+
     private var photoFile: File? = null
 
-    private fun createImageFile(subfolder : String): File {
+    private fun createImageFile(subfolder: String): File {
         // Get the DCIM directory
-        val storageDir: File? = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+        val storageDir: File? =
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
 
         // Create the dynamic subfolder
         val subfolderDir = File(storageDir, subfolder)
@@ -157,15 +159,12 @@ class SecondFragment : Fragment() {
         }
         Snackbar.make(requireView(), "1", Snackbar.LENGTH_SHORT).show()
         if (ContextCompat.checkSelfPermission(
-                requireContext(),
-                permission
+                requireContext(), permission
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             // Request the permission
             ActivityCompat.requestPermissions(
-                requireActivity(),
-                arrayOf(permission),
-                REQUEST_CODE_READ_EXTERNAL_STORAGE
+                requireActivity(), arrayOf(permission), REQUEST_CODE_READ_EXTERNAL_STORAGE
             )
         } else {
             // Permission already granted, open the gallery
@@ -177,8 +176,7 @@ class SecondFragment : Fragment() {
 
     private fun checkCameraPermission() {
         if (ContextCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.CAMERA
+                requireContext(), Manifest.permission.CAMERA
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             // Request the permission
@@ -195,9 +193,7 @@ class SecondFragment : Fragment() {
 
     @Deprecated("Deprecated in Java")
     override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
+        requestCode: Int, permissions: Array<String>, grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_READ_EXTERNAL_STORAGE) {
@@ -229,9 +225,7 @@ class SecondFragment : Fragment() {
         val subfolder = "QrNotes/ABC123"
         photoFile = createImageFile(subfolder)
         val photoURI: Uri = FileProvider.getUriForFile(
-            requireContext(),
-            "${requireContext().packageName}.fileprovider",
-            photoFile!!
+            requireContext(), "${requireContext().packageName}.fileprovider", photoFile!!
         )
         intent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
         if (intent.resolveActivity(requireActivity().packageManager) != null) {
@@ -240,11 +234,10 @@ class SecondFragment : Fragment() {
             Snackbar.make(requireView(), "No camera app found", Snackbar.LENGTH_SHORT).show()
         }
     }
+
     private fun scanFile(file: File) {
         MediaScannerConnection.scanFile(
-            requireContext(),
-            arrayOf(file.absolutePath),
-            null
+            requireContext(), arrayOf(file.absolutePath), null
         ) { path, uri ->
             // File has been scanned and added to the MediaStore
             Log.d("MediaScan", "Scanned file: $path, URI: $uri")
@@ -310,6 +303,30 @@ class SecondFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    val db = FirebaseFirestore.getInstance()
+
+    fun addNote(title: String, content: String) {
+        val note = QrNote(
+            title = title,
+            content = content
+        )
+
+        db.collection("notes").document(note.uid).set(note).addOnSuccessListener {
+            Log.d("Firestore", "Note added with ID: ${note.uid}")
+        }.addOnFailureListener { e ->
+            Log.w("Firestore", "Error adding note", e)
+        }
+    }
+
+    fun getNotes(callback: (List<QrNote>) -> Unit) {
+        db.collection("notes").get().addOnSuccessListener { result ->
+            val notes = result.toObjects(QrNote::class.java)
+            callback(notes)
+        }.addOnFailureListener { exception ->
+            Log.w("Firestore", "Error getting notes", exception)
+        }
     }
 
     interface FabVisibilityListener {

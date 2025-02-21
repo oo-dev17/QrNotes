@@ -3,5 +3,5 @@ package com.oo_dev17.qrnotes
 
 
 interface ItemClickListener {
-    fun onItemClicked(item: Item)
+    fun onItemClicked(item: QrNote)
 }
