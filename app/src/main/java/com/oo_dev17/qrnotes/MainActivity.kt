@@ -1,4 +1,4 @@
-package com.example.qrnotes
+package com.oo_dev17.qrnotes
 
 import android.os.Bundle
 import com.google.android.material.snackbar.Snackbar
@@ -9,10 +9,8 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import android.view.Menu
 import android.view.MenuItem
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.example.qrnotes.databinding.ActivityMainBinding
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.oo_dev17.qrnotes.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() , SecondFragment.FabVisibilityListener{
 

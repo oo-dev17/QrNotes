@@ -1,13 +1,10 @@
-package com.example.qrnotes
+package com.oo_dev17.qrnotes
 
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.AdapterView
 import android.widget.TextView
-import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.RecyclerView
-import kotlin.io.path.name
 
 class ItemAdapter(
     private val items: List<Item>, private val listener: ItemClickListener

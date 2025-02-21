@@ -2,7 +2,7 @@ import android.app.Dialog
 import android.content.Context
 import android.os.Bundle
 import android.widget.ImageView
-import com.example.qrnotes.R
+import com.oo_dev17.qrnotes.R
 
 class FullscreenImageDialog(context: Context, private val imageResId: Int) : Dialog(context) {
 

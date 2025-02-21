@@ -1,4 +1,4 @@
-package com.example.qrnotes
+package com.oo_dev17.qrnotes
 // ItemClickListener.kt
 
 

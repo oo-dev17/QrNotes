@@ -1,4 +1,4 @@
-package com.example.qrnotes
+package com.oo_dev17.qrnotes
 
 import android.os.Bundle
 import androidx.fragment.app.Fragment
@@ -7,7 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.qrnotes.databinding.FragmentFirstBinding
+import com.oo_dev17.qrnotes.databinding.FragmentFirstBinding
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.

@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.qrnotes"
+    namespace = "com.oo_dev17.qrnotes"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.qrnotes"
+        applicationId = "com.oo_dev17.qrnotes"
         minSdk = 25
         targetSdk = 35
         versionCode = 1
