@@ -1,38 +1,54 @@
 package com.oo_dev17.qrnotes
 
-import android.app.AlertDialog
+import android.content.ContentValues.TAG
 import android.os.Bundle
 import android.util.Log
-import com.google.android.material.snackbar.Snackbar
+import android.view.Menu
+import android.view.MenuItem
+import android.widget.EditText
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
-import android.view.Menu
-import android.view.MenuItem
-import android.widget.EditText
-import android.widget.Toast
-import androidx.core.content.ContentProviderCompat.requireContext
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.Firebase
-import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
 import com.oo_dev17.qrnotes.databinding.ActivityMainBinding
 
-class MainActivity : AppCompatActivity() , SecondFragment.FabVisibilityListener{
+class MainActivity : AppCompatActivity(), SecondFragment.FabVisibilityListener {
 
     private lateinit var fab: FloatingActionButton
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
-   // var sharedQrNote: QrNote? = null
-var sharedDb:FirebaseFirestore?=null
+
+    // var sharedQrNote: QrNote? = null
+    var sharedDb: FirebaseFirestore? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        FirebaseApp.initializeApp(this)
+        signInAnonymously()
+        //FirebaseApp.initializeApp(this)
+        val db = Firebase.firestore
+        val user = hashMapOf(
+            "first" to "Ada",
+            "last" to "Lovelace",
+            "born" to 1815
+        )
+        // Add a new document with a generated ID
+        db.collection("users")
+            .add(user)
+            .addOnSuccessListener { documentReference ->
+                Log.d(TAG, "DocumentSnapshot added with ID: ${documentReference.id}")
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error adding document", e)
+            }
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -52,6 +68,7 @@ var sharedDb:FirebaseFirestore?=null
             showTitleInputDialog()
         }
     }
+
     private fun showTitleInputDialog() {
         // Create an AlertDialog.Builder using the Activity context
         val builder = AlertDialog.Builder(this)
@@ -89,6 +106,21 @@ var sharedDb:FirebaseFirestore?=null
         builder.show()
     }
 
+    val auth = FirebaseAuth.getInstance()
+
+    fun signInAnonymously() {
+        auth.signInAnonymously()
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d("FirebaseAuth", "Anonyme Anmeldung erfolgreich")
+                    val user = auth.currentUser
+                    Log.d("FirebaseAuth", "Anonyme Benutzer-ID: ${user?.uid}")
+                } else {
+                    Log.e("FirebaseAuth", "Fehler bei der anonymen Anmeldung", task.exception)
+                }
+            }
+    }
+
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         // Inflate the menu; this adds items to the action bar if it is present.
         menuInflater.inflate(R.menu.menu_main, menu)
@@ -110,13 +142,14 @@ var sharedDb:FirebaseFirestore?=null
         return navController.navigateUp(appBarConfiguration)
                 || super.onSupportNavigateUp()
     }
+
     // Method to show the FAB
     override fun showFab() {
         fab.show()
     }
 
     // Method to hide the FAB
-  override  fun hideFab() {
+    override fun hideFab() {
         fab.hide()
     }
 }
