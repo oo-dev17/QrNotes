@@ -1,6 +1,8 @@
 package com.oo_dev17.qrnotes
 
+import android.app.AlertDialog
 import android.os.Bundle
+import android.util.Log
 import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
@@ -9,8 +11,14 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.EditText
+import android.widget.Toast
+import androidx.core.content.ContentProviderCompat.requireContext
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.firestore
 import com.oo_dev17.qrnotes.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() , SecondFragment.FabVisibilityListener{
@@ -18,6 +26,8 @@ class MainActivity : AppCompatActivity() , SecondFragment.FabVisibilityListener{
     private lateinit var fab: FloatingActionButton
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
+   // var sharedQrNote: QrNote? = null
+var sharedDb:FirebaseFirestore?=null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,17 +42,51 @@ class MainActivity : AppCompatActivity() , SecondFragment.FabVisibilityListener{
 
         // Show the FAB by default (optional)
         showFab()
-
+        sharedDb = Firebase.firestore
 
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         appBarConfiguration = AppBarConfiguration(navController.graph)
         setupActionBarWithNavController(navController, appBarConfiguration)
 
         binding.fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                .setAction("Action", null)
-                .setAnchorView(R.id.fab).show()
+            showTitleInputDialog()
         }
+    }
+    private fun showTitleInputDialog() {
+        // Create an AlertDialog.Builder using the Activity context
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Create New Note")
+        builder.setMessage("Enter a title for the note")
+
+        // Set up the input field
+        val input = EditText(this)
+        input.hint = "Title"
+        builder.setView(input)
+
+        // Set up the buttons
+        builder.setPositiveButton("Create") { dialog, _ ->
+            val title = input.text.toString()
+            if (title.isNotEmpty()) {
+                // Create a new QrNote object
+                val note = QrNote(title, "") // Empty content for now
+                val db = FirebaseFirestore.getInstance()
+                db.collection("qrNotes").add(note).addOnSuccessListener {
+                    Log.d("Firestore", "Note added with ID: ${note.uid}")
+                }.addOnFailureListener { e ->
+                    Log.w("Firestore", "Error adding note", e)
+                }
+            } else {
+                Toast.makeText(this, "Title cannot be empty", Toast.LENGTH_SHORT).show()
+            }
+            dialog.dismiss()
+        }
+
+        builder.setNegativeButton("Cancel") { dialog, _ ->
+            dialog.cancel()
+        }
+
+        // Show the dialog
+        builder.show()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -75,6 +119,4 @@ class MainActivity : AppCompatActivity() , SecondFragment.FabVisibilityListener{
   override  fun hideFab() {
         fab.hide()
     }
-
-
 }

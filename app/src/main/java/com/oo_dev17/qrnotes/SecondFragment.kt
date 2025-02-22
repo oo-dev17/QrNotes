@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.text.Editable
 import android.text.util.Linkify
 import android.util.Log
 import android.view.LayoutInflater
@@ -53,6 +54,7 @@ class SecondFragment : Fragment() {
         } else {
             throw RuntimeException("$context must implement FabVisibilityListener")
         }
+
     }
 
     override fun onDetach() {
@@ -82,6 +84,32 @@ class SecondFragment : Fragment() {
         val editText: EditText = binding.textviewSecond
         editText.setTextIsSelectable(true)
         editText.autoLinkMask = Linkify.WEB_URLS
+
+        val titleText = binding.tileText
+
+        // Get the Bundle from the arguments
+                val bundle = arguments
+                // Check if the bundle is not null and contains the QrNote
+                if (bundle != null && bundle.containsKey("qrNote")) {
+                    // Get the QrNote from the Bundle
+                    val qrNote = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        bundle.getParcelable("qrNote", QrNote::class.java)
+                    } else {
+                        bundle.getParcelable("qrNote")
+                    }
+                    // Use the QrNote
+                    if (qrNote != null) {
+                        binding.textviewSecond.text =
+                            Editable.Factory.getInstance().newEditable( qrNote.content)
+        titleText.text = qrNote?.title ?: "No title"
+
+                    }
+                }
+
+     /*   val qrNote = (requireActivity() as MainActivity).sharedQrNote
+        binding.textviewSecond.text =
+            Editable.Factory.getInstance().newEditable(qrNote?.content ?: "null")
+        titleText.text = qrNote?.title ?: "No title"*/
 // If the edit text contains previous text with potential links
         Linkify.addLinks(editText, Linkify.WEB_URLS)
 
@@ -305,29 +333,6 @@ class SecondFragment : Fragment() {
         _binding = null
     }
 
-    val db = FirebaseFirestore.getInstance()
-
-    fun addNote(title: String, content: String) {
-        val note = QrNote(
-            title = title,
-            content = content
-        )
-
-        db.collection("notes").document(note.uid).set(note).addOnSuccessListener {
-            Log.d("Firestore", "Note added with ID: ${note.uid}")
-        }.addOnFailureListener { e ->
-            Log.w("Firestore", "Error adding note", e)
-        }
-    }
-
-    fun getNotes(callback: (List<QrNote>) -> Unit) {
-        db.collection("notes").get().addOnSuccessListener { result ->
-            val notes = result.toObjects(QrNote::class.java)
-            callback(notes)
-        }.addOnFailureListener { exception ->
-            Log.w("Firestore", "Error getting notes", exception)
-        }
-    }
 
     interface FabVisibilityListener {
         fun showFab()
