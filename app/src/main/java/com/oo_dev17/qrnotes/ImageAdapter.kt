@@ -1,16 +1,17 @@
-package com.oo_dev17.qrnotes
-
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
+import com.oo_dev17.qrnotes.ImageItem
+import com.oo_dev17.qrnotes.R
+import java.io.File
 
-class ImageAdapter(private val imageResIds: List<Int>) :
+class ImageAdapter(private val imageItems: List<ImageItem>) :
     RecyclerView.Adapter<ImageAdapter.ImageViewHolder>() {
 
-    // Listener for item clicks
-    var onItemClick: ((Int) -> Unit)? = null
+    var onItemClick: ((ImageItem) -> Unit)? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ImageViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -19,17 +20,29 @@ class ImageAdapter(private val imageResIds: List<Int>) :
     }
 
     override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
-        val imageResId = imageResIds[position]
-        holder.imageView.setImageResource(imageResId)
+        val imageItem = imageItems[position]
+
+        when (imageItem) {
+            is ImageItem.FileImage -> {
+                // Load image from file using Glide
+                Glide.with(holder.itemView.context)
+                    .load(imageItem.file)
+                    .into(holder.imageView)
+            }
+            is ImageItem.ResourceImage -> {
+                // Load image from resource ID
+                holder.imageView.setImageResource(imageItem.resId)
+            }
+        }
 
         // Set click listener for the item
         holder.itemView.setOnClickListener {
-            onItemClick?.invoke(imageResId)
+            onItemClick?.invoke(imageItem)
         }
     }
 
     override fun getItemCount(): Int {
-        return imageResIds.size
+        return imageItems.size
     }
 
     class ImageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {

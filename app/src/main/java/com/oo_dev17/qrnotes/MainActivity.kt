@@ -22,26 +22,27 @@ import com.oo_dev17.qrnotes.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity(), SecondFragment.FabVisibilityListener {
 
+    private lateinit var sharedDb: FirebaseFirestore
     private lateinit var fab: FloatingActionButton
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
 
     // var sharedQrNote: QrNote? = null
-    var sharedDb: FirebaseFirestore? = null
+    //var sharedDb: FirebaseFirestore? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         signInAnonymously()
         //FirebaseApp.initializeApp(this)
-        val db = Firebase.firestore
+        sharedDb = Firebase.firestore
         val user = hashMapOf(
             "first" to "Ada",
             "last" to "Lovelace",
             "born" to 1815
         )
         // Add a new document with a generated ID
-        db.collection("users")
+        sharedDb.collection("users")
             .add(user)
             .addOnSuccessListener { documentReference ->
                 Log.d(TAG, "DocumentSnapshot added with ID: ${documentReference.id}")
@@ -86,8 +87,8 @@ class MainActivity : AppCompatActivity(), SecondFragment.FabVisibilityListener {
             if (title.isNotEmpty()) {
                 // Create a new QrNote object
                 val note = QrNote(title, "") // Empty content for now
-                val db = FirebaseFirestore.getInstance()
-                db.collection("qrNotes").add(note).addOnSuccessListener {
+
+                sharedDb.collection("qrNotes").add(note).addOnSuccessListener {
                     Log.d("Firestore", "Note added with ID: ${note.uid}")
                 }.addOnFailureListener { e ->
                     Log.w("Firestore", "Error adding note", e)

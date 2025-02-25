@@ -57,13 +57,23 @@ class FirstFragment : Fragment(), ItemClickListener {
 
     private fun getAllQrNotes(callback: (List<QrNote>) -> Unit) {
 
+
         val db = FirebaseFirestore.getInstance()
-        db.collection("qrnotes")
+        db.collection("qrNotes")
             .get()
-            .addOnSuccessListener { result ->
-                val qrNotes =
-                    result.toObjects(QrNote::class.java) // Convert Firestore documents to QrNote objects
-                callback(qrNotes)
+            .addOnSuccessListener {
+                result ->
+                Log.w("Firestore", "Successful getting QrNotes")
+                try {
+                    val qrNotes =
+                        result.toObjects(QrNote::class.java) // Convert Firestore documents to QrNote objects
+                    callback(qrNotes)
+                }
+                catch (e: Exception){
+                    Log.e("Firestore", "Error converting Firestore documents to QrNote objects", e)
+                }
+
+
             }
             .addOnFailureListener { exception ->
                 Log.w("Firestore", "Error getting QrNotes", exception)

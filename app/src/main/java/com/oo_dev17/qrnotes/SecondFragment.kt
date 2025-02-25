@@ -1,6 +1,7 @@
 package com.oo_dev17.qrnotes
 
 import FullscreenImageDialog
+import ImageAdapter
 import android.Manifest
 import android.app.Activity
 import android.content.Context
@@ -38,6 +39,7 @@ import java.io.File
  */
 class SecondFragment : Fragment() {
 
+    private var qrNote: QrNote? = null
     private var _binding: FragmentSecondBinding? = null
 
     private var fabVisibilityListener: FabVisibilityListener? = null
@@ -77,7 +79,6 @@ class SecondFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
-
         _binding = FragmentSecondBinding.inflate(inflater, container, false)
 
         binding.textviewSecond.setTextIsSelectable(true)
@@ -88,81 +89,113 @@ class SecondFragment : Fragment() {
         val titleText = binding.tileText
 
         // Get the Bundle from the arguments
-                val bundle = arguments
-                // Check if the bundle is not null and contains the QrNote
-                if (bundle != null && bundle.containsKey("qrNote")) {
-                    // Get the QrNote from the Bundle
-                    val qrNote = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        bundle.getParcelable("qrNote", QrNote::class.java)
-                    } else {
-                        bundle.getParcelable("qrNote")
-                    }
-                    // Use the QrNote
-                    if (qrNote != null) {
-                        binding.textviewSecond.text =
-                            Editable.Factory.getInstance().newEditable( qrNote.content)
-        titleText.text = qrNote?.title ?: "No title"
+        val bundle = arguments
+        // Check if the bundle is not null and contains the QrNote
+        if (bundle != null && bundle.containsKey("qrNote")) {
+            // Get the QrNote from the Bundle
+            qrNote = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                bundle.getParcelable("qrNote", QrNote::class.java)
+            } else {
+                bundle.getParcelable("qrNote")
+            }
+            // Use the QrNote
+            if (qrNote != null) {
+                binding.textviewSecond.text =
+                    Editable.Factory.getInstance().newEditable(qrNote!!.content)
+                titleText.text = qrNote?.title ?: "No title"
 
+            }
+        }
+        // If the edit text contains previous text with potential links
+        Linkify.addLinks(editText, Linkify.WEB_URLS)
+        try {
+            val imagePath= qrNote?.ImageSubfolder()?.absolutePath
+            if (imagePath == null){
+                _binding!!.recyclerView.post {
+                Snackbar.make(
+                    requireView(),
+                    "imagePath == null!",
+                    Snackbar.LENGTH_SHORT
+                ).show()}
+            }
+            var images = getImageFiles( imagePath!!)
+
+
+            // Get the RecyclerView
+            val recyclerView: RecyclerView = binding.recyclerView
+            val pictures = images.map { ImageItem.FileImage(it) }
+            _binding!!.recyclerView.post { Snackbar.make(
+            requireView(),
+            "Number of images: ${pictures.size}",
+            Snackbar.LENGTH_SHORT
+        ).show()}
+
+            // Set up the RecyclerView with a horizontal LinearLayoutManager
+            recyclerView.layoutManager =
+                LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+            // Create and set the adapter
+            val imagesItems = pictures+
+                    ImageItem.ResourceImage(R.drawable.plus_sign) +
+                    ImageItem.ResourceImage(android.R.drawable.ic_menu_camera)
+            val adapter = ImageAdapter(imagesItems)
+            recyclerView.adapter = adapter
+
+// Handle item clicks
+            adapter.onItemClick = { imageItem ->
+                when (imageItem) {
+                    is ImageItem.FileImage -> {
+                        _binding!!.recyclerView.post {
+                        Snackbar.make(
+                            requireView(),
+                            "Image clicked: ${imageItem.file}",
+                            Snackbar.LENGTH_SHORT
+                        )
+                            .show()}
+                        val dialog = FullscreenImageDialog(requireContext(), imageItem.file)
+                        dialog.show()
+                    }
+
+                    is ImageItem.ResourceImage -> {
+                        if (imageItem.resId == R.drawable.plus_sign) {
+                            // Check storage permission and open the gallery
+                            _binding!!.recyclerView.post {
+                            Snackbar.make(
+                                requireView(),
+                                "Book details loaded!",
+                                Snackbar.LENGTH_SHORT
+                            ).show()}
+                            checkStoragePermission()
+                        } else if (imageItem.resId == android.R.drawable.ic_menu_camera) {
+                            // Check camera permission and open the camera
+                            checkCameraPermission()
+                        }
                     }
                 }
 
-     /*   val qrNote = (requireActivity() as MainActivity).sharedQrNote
-        binding.textviewSecond.text =
-            Editable.Factory.getInstance().newEditable(qrNote?.content ?: "null")
-        titleText.text = qrNote?.title ?: "No title"*/
-// If the edit text contains previous text with potential links
-        Linkify.addLinks(editText, Linkify.WEB_URLS)
 
-        // List of image resource IDs
-        val imageResIds = listOf(
-            R.drawable.haus,
-            R.drawable.haus,
-            R.drawable.plus_sign,
-            android.R.drawable.ic_menu_camera
-        )
-        println("Number of images: ${imageResIds.size}")
-
-        // Get the RecyclerView
-        val recyclerView: RecyclerView = binding.recyclerView
-
-        // Set up the RecyclerView with a horizontal LinearLayoutManager
-        recyclerView.layoutManager =
-            LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
-        // Create and set the adapter
-        val adapter = ImageAdapter(imageResIds)
-        recyclerView.adapter = adapter
-
-// Handle item clicks
-        adapter.onItemClick = { imageResId ->
-            if (imageResId == R.drawable.plus_sign) {
-                // Check storage permission and open the gallery
-                Snackbar.make(requireView(), "Book details loaded!", Snackbar.LENGTH_SHORT).show()
-                checkStoragePermission()
-            } else if (imageResId == android.R.drawable.ic_menu_camera) {
-                // Check camera permission and open the camera
-                checkCameraPermission()
-            } else {
-                // Default action for other images
-                Snackbar.make(requireView(), "Image clicked: $imageResId", Snackbar.LENGTH_SHORT)
-                    .show()
-                val dialog = FullscreenImageDialog(requireContext(), imageResId)
-                dialog.show()
             }
+        } catch (e: Exception) {
+            Log.e("Firestore", "Error getting QrNotes", e)
         }
         return binding.root
     }
 
     private var photoFile: File? = null
 
-    private fun createImageFile(subfolder: String): File {
-        // Get the DCIM directory
-        val storageDir: File? =
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+    private fun createImageFile(): File {
 
-        // Create the dynamic subfolder
-        val subfolderDir = File(storageDir, subfolder)
-        if (!subfolderDir.exists()) {
-            subfolderDir.mkdirs() // Create the subfolder if it doesn't exist
+        val subfolderDir = qrNote?.ImageSubfolder()
+
+        if (subfolderDir == null)
+        {
+            _binding!!.recyclerView.post {
+            Snackbar.make(
+                requireView(),
+                "subfolderDir == null!",
+                Snackbar.LENGTH_SHORT
+            ).show()}
+            return File("")
+
         }
 
         // Create the file in the subfolder
@@ -175,6 +208,32 @@ class SecondFragment : Fragment() {
         }
     }
 
+    private fun getImageFiles(subfolderPath: String): List<File> {
+
+
+        val subfolderDir = qrNote?.ImageSubfolder()
+        if (subfolderDir == null || !subfolderDir.exists()){
+            _binding!!.recyclerView.post {
+            Snackbar.make(
+                requireView(),
+                "subfolderDir ${subfolderPath} does not exist!",
+                Snackbar.LENGTH_SHORT
+            ).show()}
+            return emptyList<File>()
+        }
+
+        val imageExtensions = setOf("jpg", "jpeg", "png", "gif", "bmp", "webp")
+        // Filter files in the subfolder by image extensions
+        val subfolder = File(subfolderPath)
+        return subfolder.listFiles()
+            ?.filter { file ->
+                file.isFile && imageExtensions.any { ext ->
+                    file.name.endsWith(".$ext", ignoreCase = true)
+                }
+            }
+            ?: emptyList() // Return an empty list if the subfolder is empty or inaccessible
+    }
+
     private val REQUEST_CODE_READ_EXTERNAL_STORAGE = 100
 
     private fun checkStoragePermission() {
@@ -185,7 +244,8 @@ class SecondFragment : Fragment() {
             // Use READ_EXTERNAL_STORAGE for older versions
             Manifest.permission.READ_EXTERNAL_STORAGE
         }
-        Snackbar.make(requireView(), "1", Snackbar.LENGTH_SHORT).show()
+        _binding!!.recyclerView.post {
+        Snackbar.make(requireView(), "1", Snackbar.LENGTH_SHORT).show()}
         if (ContextCompat.checkSelfPermission(
                 requireContext(), permission
             ) != PackageManager.PERMISSION_GRANTED
@@ -230,8 +290,9 @@ class SecondFragment : Fragment() {
                 openGallery()
             } else {
                 // Permission denied, show a message
+                _binding!!.recyclerView.post {
                 Snackbar.make(requireView(), "Storage permission denied", Snackbar.LENGTH_SHORT)
-                    .show()
+                    .show()}
             }
         }
         if (requestCode == REQUEST_CODE_CAMERA_PERMISSION) {
@@ -240,8 +301,9 @@ class SecondFragment : Fragment() {
                 openCamera()
             } else {
                 // Permission denied, show a message
+                _binding!!.recyclerView.post {
                 Snackbar.make(requireView(), "Camera permission denied", Snackbar.LENGTH_SHORT)
-                    .show()
+                    .show()}
             }
         }
     }
@@ -250,8 +312,8 @@ class SecondFragment : Fragment() {
 
     private fun openCamera() {
         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        val subfolder = "QrNotes/ABC123"
-        photoFile = createImageFile(subfolder)
+
+        photoFile = createImageFile()
         val photoURI: Uri = FileProvider.getUriForFile(
             requireContext(), "${requireContext().packageName}.fileprovider", photoFile!!
         )

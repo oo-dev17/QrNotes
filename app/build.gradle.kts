@@ -61,4 +61,6 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     implementation(libs.firebase.bom)
+    implementation(libs.glide) // Use the latest version
+    annotationProcessor(libs.compiler) // For annotation processing (if needed)
 }

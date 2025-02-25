@@ -16,8 +16,6 @@ class ItemAdapter(
         val titleTextView: TextView = itemView.findViewById(R.id.item_title)
         val descriptionTextView: TextView = itemView.findViewById(R.id.item_description)
         val uidTextView: TextView = itemView.findViewById(R.id.item_uid)
-
-
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemViewHolder {
@@ -31,7 +29,7 @@ class ItemAdapter(
         val qrNote = items[position]
         holder.titleTextView.text = qrNote.title
         holder.descriptionTextView.text =String.format("%20.20s",  qrNote.content)
-        holder.uidTextView.text = qrNote.uid
+        holder.uidTextView.text = qrNote.getShortHash()
 
         // Set the click listener on the item view
         holder.itemView.setOnClickListener {

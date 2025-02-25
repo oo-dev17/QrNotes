@@ -1,14 +1,19 @@
 package com.oo_dev17.qrnotes
+
+import android.os.Environment
 import android.os.Parcel
 import android.os.Parcelable
+import java.io.File
 import java.util.UUID
 
+
 data class QrNote(
-    val title: String,
-    val content: String,
+    val title: String? = null,
+    val content: String? = null,
     val uid: String = UUID.randomUUID().toString(),
     val creationDate: Long = System.currentTimeMillis()
 ) : Parcelable {
+
 
     // Constructor to create a QrNote from a Parcel
     constructor(parcel: Parcel) : this(
@@ -40,5 +45,20 @@ data class QrNote(
         override fun newArray(size: Int): Array<QrNote?> {
             return arrayOfNulls(size)
         }
+    }
+
+    fun getShortHash(): String {
+        return uid.substring(0, uid.indexOf('-'))
+    }
+
+    fun ImageSubfolder(): File {
+        val storageDir: File? =
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+        val subfolder = "QrNotes/" + getShortHash()
+        val subfolderDir = File(storageDir, subfolder)
+        if (!subfolderDir.exists())
+            subfolderDir.mkdirs()
+        return subfolderDir
+
     }
 }
