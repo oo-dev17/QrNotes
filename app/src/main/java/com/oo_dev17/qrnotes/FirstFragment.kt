@@ -65,9 +65,11 @@ class FirstFragment : Fragment(), ItemClickListener {
                 result ->
                 Log.w("Firestore", "Successful getting QrNotes")
                 try {
-                    val qrNotes =
-                        result.toObjects(QrNote::class.java) // Convert Firestore documents to QrNote objects
-                    callback(qrNotes)
+                    val notes = result.map { qrNote ->
+                        val qr= qrNote.toObject(QrNote::class.java)
+                        qr.copy(documentId = qrNote.id)
+                    }
+                    callback(notes)
                 }
                 catch (e: Exception){
                     Log.e("Firestore", "Error converting Firestore documents to QrNote objects", e)

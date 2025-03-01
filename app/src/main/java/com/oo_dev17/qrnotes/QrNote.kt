@@ -11,7 +11,8 @@ data class QrNote(
     val title: String? = null,
     val content: String? = null,
     val uid: String = UUID.randomUUID().toString(),
-    val creationDate: Long = System.currentTimeMillis()
+    val creationDate: Long = System.currentTimeMillis(),
+    val documentId: String? = null
 ) : Parcelable {
 
 

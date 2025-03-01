@@ -12,6 +12,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:windowSoftInputMode="adjustPan"
+        android:hardwareAccelerated="true"
         android:theme="@style/Theme.QrNotes"
         tools:targetApi="31">
         <activity

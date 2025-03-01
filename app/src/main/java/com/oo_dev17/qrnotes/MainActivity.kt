@@ -34,23 +34,7 @@ class MainActivity : AppCompatActivity(), SecondFragment.FabVisibilityListener {
         super.onCreate(savedInstanceState)
 
         signInAnonymously()
-        //FirebaseApp.initializeApp(this)
         sharedDb = Firebase.firestore
-        val user = hashMapOf(
-            "first" to "Ada",
-            "last" to "Lovelace",
-            "born" to 1815
-        )
-        // Add a new document with a generated ID
-        sharedDb.collection("users")
-            .add(user)
-            .addOnSuccessListener { documentReference ->
-                Log.d(TAG, "DocumentSnapshot added with ID: ${documentReference.id}")
-            }
-            .addOnFailureListener { e ->
-                Log.w(TAG, "Error adding document", e)
-            }
-
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 

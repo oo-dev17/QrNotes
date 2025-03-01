@@ -22,6 +22,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -30,7 +33,13 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
+import com.google.firebase.Firebase
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.firestore
+import com.google.zxing.integration.android.IntentIntegrator
+import com.journeyapps.barcodescanner.CaptureActivity
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import com.oo_dev17.qrnotes.databinding.FragmentSecondBinding
 import java.io.File
 
@@ -384,10 +393,80 @@ class SecondFragment : Fragment() {
         Snackbar.make(requireView(), "Image selected: $imageUri", Snackbar.LENGTH_SHORT).show()
     }
 
+
+
+
+    private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
+        if (result.contents == null) {
+            Toast.makeText(requireContext(), "Scan cancelled", Toast.LENGTH_SHORT).show()
+        } else {
+            val scannedData = result.contents // Get the scanned QR code data
+            Toast.makeText(requireContext(), "Scanned: $scannedData", Toast.LENGTH_SHORT).show()
+            binding.qrCode.text = scannedData
+        }
+    }
+
+    private fun launchQRCodeScanner() {
+        val options = ScanOptions().apply {
+            setDesiredBarcodeFormats(ScanOptions.QR_CODE) // Specify QR code format
+            setPrompt("Scan a QR code") // Set a prompt
+            setCameraId(0) // Use the default camera
+            setBeepEnabled(true) // Play a beep sound
+            setBarcodeImageEnabled(true) // Enable saving the barcode image
+        }
+
+        scanLauncher.launch(options) // Launch the scanner
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        val tileTextView: TextView = binding.tileText
+
+        tileTextView.setOnClickListener {
+
+            val builder = AlertDialog.Builder(requireContext())
+            builder.setTitle("Change Title")
+            val input = EditText(requireContext()).apply {
+                setText(qrNote!!.title)}
+
+            builder.setView(input)
+
+            // Set up the buttons
+            builder.setPositiveButton("Change") { dialog, _ ->
+                val title = input.text.toString()
+                if (title.isNotEmpty()) {
+
+                    tileTextView.text = title
+                    tileTextView.requestFocus()
+                    val updates = hashMapOf<String, Any>(
+                        "${qrNote!!::title.name}" to title
+                    )
+
+                    Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!).update(updates).addOnSuccessListener {
+                        Log.d("Firestore", "Note updated with ID: ${qrNote!!.uid}")
+                    }.addOnFailureListener { e ->
+                        Log.w("Firestore", "Error adding note", e)
+                    }
+                } else {
+                    Snackbar.make(
+                        requireView(), "Title cannot be empty", Toast.LENGTH_SHORT).show()
+                }
+                dialog.dismiss()
+            }
+
+            builder.setNegativeButton("Cancel") { dialog, _ ->
+                dialog.cancel()
+            }
+
+            // Show the dialog
+            builder.show()
+
+
+        }
+
         binding.buttonSecond.setOnClickListener {
-            findNavController().navigate(R.id.action_SecondFragment_to_FirstFragment)
+            launchQRCodeScanner()
+            //findNavController().navigate(R.id.action_SecondFragment_to_FirstFragment)
         }
     }
 
