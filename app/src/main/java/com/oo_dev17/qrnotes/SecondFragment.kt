@@ -12,7 +12,6 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.provider.MediaStore
 import android.text.Editable
 import android.text.util.Linkify
@@ -29,15 +28,11 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.Firebase
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
-import com.google.zxing.integration.android.IntentIntegrator
-import com.journeyapps.barcodescanner.CaptureActivity
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.oo_dev17.qrnotes.databinding.FragmentSecondBinding
@@ -112,38 +107,40 @@ class SecondFragment : Fragment() {
                 binding.textviewSecond.text =
                     Editable.Factory.getInstance().newEditable(qrNote!!.content)
                 titleText.text = qrNote?.title ?: "No title"
-
             }
         }
         // If the edit text contains previous text with potential links
         Linkify.addLinks(editText, Linkify.WEB_URLS)
         try {
-            val imagePath= qrNote?.ImageSubfolder()?.absolutePath
-            if (imagePath == null){
+            val imagePath = qrNote?.ImageSubfolder()?.absolutePath
+            if (imagePath == null) {
                 _binding!!.recyclerView.post {
-                Snackbar.make(
-                    requireView(),
-                    "imagePath == null!",
-                    Snackbar.LENGTH_SHORT
-                ).show()}
+                    Snackbar.make(
+                        requireView(),
+                        "imagePath == null!",
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                }
             }
-            var images = getImageFiles( imagePath!!)
+            var images = getImageFiles(imagePath!!)
 
 
             // Get the RecyclerView
             val recyclerView: RecyclerView = binding.recyclerView
             val pictures = images.map { ImageItem.FileImage(it) }
-            _binding!!.recyclerView.post { Snackbar.make(
-            requireView(),
-            "Number of images: ${pictures.size}",
-            Snackbar.LENGTH_SHORT
-        ).show()}
+            _binding!!.recyclerView.post {
+                Snackbar.make(
+                    requireView(),
+                    "Number of images: ${pictures.size}",
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            }
 
             // Set up the RecyclerView with a horizontal LinearLayoutManager
             recyclerView.layoutManager =
                 LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
             // Create and set the adapter
-            val imagesItems = pictures+
+            val imagesItems = pictures +
                     ImageItem.ResourceImage(R.drawable.plus_sign) +
                     ImageItem.ResourceImage(android.R.drawable.ic_menu_camera)
             val adapter = ImageAdapter(imagesItems)
@@ -154,12 +151,13 @@ class SecondFragment : Fragment() {
                 when (imageItem) {
                     is ImageItem.FileImage -> {
                         _binding!!.recyclerView.post {
-                        Snackbar.make(
-                            requireView(),
-                            "Image clicked: ${imageItem.file}",
-                            Snackbar.LENGTH_SHORT
-                        )
-                            .show()}
+                            Snackbar.make(
+                                requireView(),
+                                "Image clicked: ${imageItem.file}",
+                                Snackbar.LENGTH_SHORT
+                            )
+                                .show()
+                        }
                         val dialog = FullscreenImageDialog(requireContext(), imageItem.file)
                         dialog.show()
                     }
@@ -168,11 +166,12 @@ class SecondFragment : Fragment() {
                         if (imageItem.resId == R.drawable.plus_sign) {
                             // Check storage permission and open the gallery
                             _binding!!.recyclerView.post {
-                            Snackbar.make(
-                                requireView(),
-                                "Book details loaded!",
-                                Snackbar.LENGTH_SHORT
-                            ).show()}
+                                Snackbar.make(
+                                    requireView(),
+                                    "Book details loaded!",
+                                    Snackbar.LENGTH_SHORT
+                                ).show()
+                            }
                             checkStoragePermission()
                         } else if (imageItem.resId == android.R.drawable.ic_menu_camera) {
                             // Check camera permission and open the camera
@@ -195,14 +194,14 @@ class SecondFragment : Fragment() {
 
         val subfolderDir = qrNote?.ImageSubfolder()
 
-        if (subfolderDir == null)
-        {
+        if (subfolderDir == null) {
             _binding!!.recyclerView.post {
-            Snackbar.make(
-                requireView(),
-                "subfolderDir == null!",
-                Snackbar.LENGTH_SHORT
-            ).show()}
+                Snackbar.make(
+                    requireView(),
+                    "subfolderDir == null!",
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            }
             return File("")
 
         }
@@ -221,13 +220,14 @@ class SecondFragment : Fragment() {
 
 
         val subfolderDir = qrNote?.ImageSubfolder()
-        if (subfolderDir == null || !subfolderDir.exists()){
+        if (subfolderDir == null || !subfolderDir.exists()) {
             _binding!!.recyclerView.post {
-            Snackbar.make(
-                requireView(),
-                "subfolderDir ${subfolderPath} does not exist!",
-                Snackbar.LENGTH_SHORT
-            ).show()}
+                Snackbar.make(
+                    requireView(),
+                    "subfolderDir ${subfolderPath} does not exist!",
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            }
             return emptyList<File>()
         }
 
@@ -254,7 +254,8 @@ class SecondFragment : Fragment() {
             Manifest.permission.READ_EXTERNAL_STORAGE
         }
         _binding!!.recyclerView.post {
-        Snackbar.make(requireView(), "1", Snackbar.LENGTH_SHORT).show()}
+            Snackbar.make(requireView(), "1", Snackbar.LENGTH_SHORT).show()
+        }
         if (ContextCompat.checkSelfPermission(
                 requireContext(), permission
             ) != PackageManager.PERMISSION_GRANTED
@@ -300,8 +301,9 @@ class SecondFragment : Fragment() {
             } else {
                 // Permission denied, show a message
                 _binding!!.recyclerView.post {
-                Snackbar.make(requireView(), "Storage permission denied", Snackbar.LENGTH_SHORT)
-                    .show()}
+                    Snackbar.make(requireView(), "Storage permission denied", Snackbar.LENGTH_SHORT)
+                        .show()
+                }
             }
         }
         if (requestCode == REQUEST_CODE_CAMERA_PERMISSION) {
@@ -311,8 +313,9 @@ class SecondFragment : Fragment() {
             } else {
                 // Permission denied, show a message
                 _binding!!.recyclerView.post {
-                Snackbar.make(requireView(), "Camera permission denied", Snackbar.LENGTH_SHORT)
-                    .show()}
+                    Snackbar.make(requireView(), "Camera permission denied", Snackbar.LENGTH_SHORT)
+                        .show()
+                }
             }
         }
     }
@@ -394,8 +397,6 @@ class SecondFragment : Fragment() {
     }
 
 
-
-
     private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
         if (result.contents == null) {
             Toast.makeText(requireContext(), "Scan cancelled", Toast.LENGTH_SHORT).show()
@@ -427,7 +428,8 @@ class SecondFragment : Fragment() {
             val builder = AlertDialog.Builder(requireContext())
             builder.setTitle("Change Title")
             val input = EditText(requireContext()).apply {
-                setText(qrNote!!.title)}
+                setText(qrNote!!.title)
+            }
 
             builder.setView(input)
 
@@ -442,14 +444,16 @@ class SecondFragment : Fragment() {
                         "${qrNote!!::title.name}" to title
                     )
 
-                    Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!).update(updates).addOnSuccessListener {
-                        Log.d("Firestore", "Note updated with ID: ${qrNote!!.uid}")
+                    Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
+                        .update(updates).addOnSuccessListener {
+                        Log.d("Firestore", "Note updated with ID: ${qrNote!!.documentId}")
                     }.addOnFailureListener { e ->
                         Log.w("Firestore", "Error adding note", e)
                     }
                 } else {
                     Snackbar.make(
-                        requireView(), "Title cannot be empty", Toast.LENGTH_SHORT).show()
+                        requireView(), "Title cannot be empty", Toast.LENGTH_SHORT
+                    ).show()
                 }
                 dialog.dismiss()
             }

@@ -1,6 +1,5 @@
 package com.oo_dev17.qrnotes
 
-import android.content.ContentValues.TAG
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
@@ -26,9 +25,6 @@ class MainActivity : AppCompatActivity(), SecondFragment.FabVisibilityListener {
     private lateinit var fab: FloatingActionButton
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
-
-    // var sharedQrNote: QrNote? = null
-    //var sharedDb: FirebaseFirestore? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,8 +68,14 @@ class MainActivity : AppCompatActivity(), SecondFragment.FabVisibilityListener {
                 // Create a new QrNote object
                 val note = QrNote(title, "") // Empty content for now
 
-                sharedDb.collection("qrNotes").add(note).addOnSuccessListener {
-                    Log.d("Firestore", "Note added with ID: ${note.uid}")
+                sharedDb.collection("qrNotes").add(note).addOnSuccessListener { docRef ->
+                    Log.d("Firestore", "Note added with ID: ${docRef.id}")
+                    sharedDb.collection("qrNotes").document(docRef.id).update("id", docRef.id)
+note.documentId=docRef.id
+
+                    val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_main)
+                    val firstFragment = navHostFragment?.childFragmentManager?.fragments?.get(0) as? FirstFragment
+                    firstFragment?.onNewQrNote(note)
                 }.addOnFailureListener { e ->
                     Log.w("Firestore", "Error adding note", e)
                 }

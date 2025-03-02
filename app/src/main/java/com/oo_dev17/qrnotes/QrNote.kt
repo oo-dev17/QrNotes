@@ -4,15 +4,13 @@ import android.os.Environment
 import android.os.Parcel
 import android.os.Parcelable
 import java.io.File
-import java.util.UUID
 
 
 data class QrNote(
     val title: String? = null,
     val content: String? = null,
-    val uid: String = UUID.randomUUID().toString(),
     val creationDate: Long = System.currentTimeMillis(),
-    val documentId: String? = null
+    var documentId: String? = null
 ) : Parcelable {
 
 
@@ -20,8 +18,8 @@ data class QrNote(
     constructor(parcel: Parcel) : this(
         parcel.readString()!!,
         parcel.readString()!!,
-        parcel.readString()!!,
-        parcel.readLong()
+        parcel.readLong(),
+        parcel.readString()!!
     )
 
     // Describe the kinds of special objects contained in this Parcelable instance's marshaled representation.
@@ -33,8 +31,8 @@ data class QrNote(
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         parcel.writeString(title)
         parcel.writeString(content)
-        parcel.writeString(uid)
         parcel.writeLong(creationDate)
+        parcel.writeString(documentId)
     }
 
     // Companion object with CREATOR to create instances of QrNote from a Parcel
@@ -48,14 +46,10 @@ data class QrNote(
         }
     }
 
-    fun getShortHash(): String {
-        return uid.substring(0, uid.indexOf('-'))
-    }
-
     fun ImageSubfolder(): File {
         val storageDir: File? =
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
-        val subfolder = "QrNotes/" + getShortHash()
+        val subfolder = "QrNotes/" + documentId
         val subfolderDir = File(storageDir, subfolder)
         if (!subfolderDir.exists())
             subfolderDir.mkdirs()
