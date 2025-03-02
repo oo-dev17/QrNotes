@@ -8,8 +8,10 @@ import android.widget.TextView
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
 
+
 class ItemAdapter(
-    private val items: List<QrNote>
+    private val items: List<QrNote>,
+    private val itemLongClickListener: ItemClickListener
 ) : RecyclerView.Adapter<ItemAdapter.ItemViewHolder>() {
 
     class ItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -28,8 +30,8 @@ class ItemAdapter(
     override fun onBindViewHolder(holder: ItemViewHolder, position: Int) {
         val qrNote = items[position]
         holder.titleTextView.text = qrNote.title
-        holder.descriptionTextView.text =String.format("%20.20s",  qrNote.content)
-        holder.uidTextView.text = qrNote.getShortHash()
+        holder.descriptionTextView.text = String.format("%20.20s", qrNote.content)
+        holder.uidTextView.text = qrNote.documentId
 
         // Set the click listener on the item view
         holder.itemView.setOnClickListener {
@@ -37,10 +39,16 @@ class ItemAdapter(
             val bundle = Bundle()
             // Put the QrNote into the Bundle
             bundle.putParcelable("qrNote", qrNote)
-          //  (requireActivity() as MainActivity).sharedQrNote = item
+            //  (requireActivity() as MainActivity).sharedQrNote = item
             // Navigate to SecondFragment with the Bundle
-            holder.itemView.findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment, bundle)
+            holder.itemView.findNavController()
+                .navigate(R.id.action_FirstFragment_to_SecondFragment, bundle)
         }
+        holder.itemView.setOnLongClickListener {
+            itemLongClickListener.showQrNoteOptions(qrNote)
+            true // Consume the long click event
+        }
+
 
         // Load image using a library like Glide or Coil
         // Glide.with(holder.itemView.context).load(currentItem.imageUrl).into(holder.itemImage)

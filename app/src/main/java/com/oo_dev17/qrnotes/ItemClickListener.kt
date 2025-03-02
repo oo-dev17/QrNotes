@@ -3,5 +3,8 @@ package com.oo_dev17.qrnotes
 
 
 interface ItemClickListener {
+
     fun onItemClicked(item: QrNote)
+    fun showQrNoteOptions(qrNote: QrNote)
+    fun deleteQrNote(qrNote: QrNote)
 }
