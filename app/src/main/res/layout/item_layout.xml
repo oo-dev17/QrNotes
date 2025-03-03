@@ -1,17 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:clickable="false"
     android:focusable="true"
-    android:padding="16dp">
+    android:padding="10dp">
 
     <ImageView
         android:id="@+id/item_image"
-        android:layout_width="64dp"
+        android:layout_width="100dp"
         android:layout_height="64dp"
-        android:src="@drawable/ic_launcher_background"
+        android:contentDescription="TODO"
+        android:src="@drawable/ic_launcher_foreground"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -28,24 +30,14 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
-        android:id="@+id/item_description"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="8dp"
-        android:text="Item Description"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/item_image"
-        app:layout_constraintTop_toBottomOf="@id/item_title" />
-
-    <TextView
         android:id="@+id/item_uid"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="8dp"
+
         android:text="Item Description"
+        android:textColor="#666666"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/item_image"
-        app:layout_constraintTop_toBottomOf="@id/item_description" />
+        app:layout_constraintTop_toBottomOf="@+id/item_title" />
 </androidx.constraintlayout.widget.ConstraintLayout>

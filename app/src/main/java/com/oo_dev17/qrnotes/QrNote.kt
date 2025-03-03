@@ -3,6 +3,7 @@ package com.oo_dev17.qrnotes
 import android.os.Environment
 import android.os.Parcel
 import android.os.Parcelable
+import com.google.android.material.snackbar.Snackbar
 import java.io.File
 
 
@@ -55,5 +56,23 @@ data class QrNote(
             subfolderDir.mkdirs()
         return subfolderDir
 
+    }
+
+    internal fun getImageFiles(): Pair<List<File>, String> {
+        val subfolderPath = ImageSubfolder()?.absolutePath
+        val subfolderDir = ImageSubfolder()
+        if (subfolderDir == null || !subfolderDir.exists()) {
+            return Pair(emptyList<File>(), "subfolderDir ${subfolderPath} does not exist!")
+        }
+        val imageExtensions = setOf("jpg", "jpeg", "png", "gif", "bmp", "webp")
+        // Filter files in the subfolder by image extensions
+        val subfolder = File(subfolderPath)
+        return Pair(subfolder.listFiles()
+            ?.filter { file ->
+                file.isFile && imageExtensions.any { ext ->
+                    file.name.endsWith(".$ext", ignoreCase = true)
+                }
+            }
+            ?: emptyList(), "") // Return an empty list if the subfolder is empty or inaccessible
     }
 }

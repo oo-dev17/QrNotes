@@ -71,11 +71,22 @@ class MainActivity : AppCompatActivity(), SecondFragment.FabVisibilityListener {
                 sharedDb.collection("qrNotes").add(note).addOnSuccessListener { docRef ->
                     Log.d("Firestore", "Note added with ID: ${docRef.id}")
                     sharedDb.collection("qrNotes").document(docRef.id).update("id", docRef.id)
-note.documentId=docRef.id
+                    note.documentId = docRef.id
 
-                    val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_main)
-                    val firstFragment = navHostFragment?.childFragmentManager?.fragments?.get(0) as? FirstFragment
+                    val navHostFragment =
+                        supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_main)
+                    val firstFragment =
+                        navHostFragment?.childFragmentManager?.fragments?.get(0) as? FirstFragment
                     firstFragment?.onNewQrNote(note)
+                    // Jump to second fragment
+                    val bundle = Bundle()
+                    // Put the QrNote into the Bundle
+                    bundle.putParcelable("qrNote", note)
+                    //  (requireActivity() as MainActivity).sharedQrNote = item
+                    // Navigate to SecondFragment with the Bundle
+                    val navController = findNavController(R.id.nav_host_fragment_content_main)
+                    navController.navigate(R.id.action_FirstFragment_to_SecondFragment, bundle)
+
                 }.addOnFailureListener { e ->
                     Log.w("Firestore", "Error adding note", e)
                 }

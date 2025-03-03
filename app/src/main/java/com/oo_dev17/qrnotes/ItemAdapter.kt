@@ -4,9 +4,11 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 
 
 class ItemAdapter(
@@ -16,8 +18,9 @@ class ItemAdapter(
 
     class ItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val titleTextView: TextView = itemView.findViewById(R.id.item_title)
-        val descriptionTextView: TextView = itemView.findViewById(R.id.item_description)
+        //val descriptionTextView: TextView = itemView.findViewById(R.id.item_description)
         val uidTextView: TextView = itemView.findViewById(R.id.item_uid)
+        val item_image: ImageView = itemView.findViewById(R.id.item_image)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemViewHolder {
@@ -30,7 +33,7 @@ class ItemAdapter(
     override fun onBindViewHolder(holder: ItemViewHolder, position: Int) {
         val qrNote = items[position]
         holder.titleTextView.text = qrNote.title
-        holder.descriptionTextView.text = String.format("%20.20s", qrNote.content)
+        //holder.descriptionTextView.text = String.format("%20.20s", qrNote.content)
         holder.uidTextView.text = qrNote.documentId
 
         // Set the click listener on the item view
@@ -48,10 +51,12 @@ class ItemAdapter(
             itemLongClickListener.showQrNoteOptions(qrNote)
             true // Consume the long click event
         }
-
-
-        // Load image using a library like Glide or Coil
-        // Glide.with(holder.itemView.context).load(currentItem.imageUrl).into(holder.itemImage)
+        val firstPics = qrNote.getImageFiles().first
+        if (firstPics.isNotEmpty()) {
+            // Load image using a library like Glide or Coil
+            Glide.with(holder.itemView.context).load(firstPics.first())
+                .into(holder.item_image)
+        }
     }
 
     override fun getItemCount(): Int {

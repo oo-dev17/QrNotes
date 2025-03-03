@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.text.Editable
+import android.text.TextWatcher
 import android.text.util.Linkify
 import android.util.Log
 import android.view.LayoutInflater
@@ -76,6 +77,7 @@ class SecondFragment : Fragment() {
 
     override fun onPause() {
         super.onPause()
+        SaveText()
         // Show the FAB when the fragment is no longer visible
         fabVisibilityListener?.showFab()
     }
@@ -86,9 +88,9 @@ class SecondFragment : Fragment() {
         _binding = FragmentSecondBinding.inflate(inflater, container, false)
 
         binding.textviewSecond.setTextIsSelectable(true)
-        val editText: EditText = binding.textviewSecond
-        editText.setTextIsSelectable(true)
-        editText.autoLinkMask = Linkify.WEB_URLS
+        val textviewSecond: EditText = binding.textviewSecond
+        textviewSecond.setTextIsSelectable(true)
+        textviewSecond.autoLinkMask = Linkify.WEB_URLS
 
         val titleText = binding.tileText
 
@@ -110,7 +112,7 @@ class SecondFragment : Fragment() {
             }
         }
         // If the edit text contains previous text with potential links
-        Linkify.addLinks(editText, Linkify.WEB_URLS)
+        Linkify.addLinks(textviewSecond, Linkify.WEB_URLS)
         try {
             val imagePath = qrNote?.ImageSubfolder()?.absolutePath
             if (imagePath == null) {
@@ -122,8 +124,17 @@ class SecondFragment : Fragment() {
                     ).show()
                 }
             }
-            var images = getImageFiles(imagePath!!)
-
+            var (images, error) = qrNote!!.getImageFiles()
+            if (error !="") {
+                _binding!!.recyclerView.post {
+                    Snackbar.make(
+                        requireView(),
+                        error,
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                }
+                return binding.root
+            }
 
             // Get the RecyclerView
             val recyclerView: RecyclerView = binding.recyclerView
@@ -216,32 +227,7 @@ class SecondFragment : Fragment() {
         }
     }
 
-    private fun getImageFiles(subfolderPath: String): List<File> {
 
-
-        val subfolderDir = qrNote?.ImageSubfolder()
-        if (subfolderDir == null || !subfolderDir.exists()) {
-            _binding!!.recyclerView.post {
-                Snackbar.make(
-                    requireView(),
-                    "subfolderDir ${subfolderPath} does not exist!",
-                    Snackbar.LENGTH_SHORT
-                ).show()
-            }
-            return emptyList<File>()
-        }
-
-        val imageExtensions = setOf("jpg", "jpeg", "png", "gif", "bmp", "webp")
-        // Filter files in the subfolder by image extensions
-        val subfolder = File(subfolderPath)
-        return subfolder.listFiles()
-            ?.filter { file ->
-                file.isFile && imageExtensions.any { ext ->
-                    file.name.endsWith(".$ext", ignoreCase = true)
-                }
-            }
-            ?: emptyList() // Return an empty list if the subfolder is empty or inaccessible
-    }
 
     private val REQUEST_CODE_READ_EXTERNAL_STORAGE = 100
 
@@ -446,10 +432,10 @@ class SecondFragment : Fragment() {
 
                     Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
                         .update(updates).addOnSuccessListener {
-                        Log.d("Firestore", "Note updated with ID: ${qrNote!!.documentId}")
-                    }.addOnFailureListener { e ->
-                        Log.w("Firestore", "Error adding note", e)
-                    }
+                            Log.d("Firestore", "Note updated with ID: ${qrNote!!.documentId}")
+                        }.addOnFailureListener { e ->
+                            Log.w("Firestore", "Error adding note", e)
+                        }
                 } else {
                     Snackbar.make(
                         requireView(), "Title cannot be empty", Toast.LENGTH_SHORT
@@ -483,5 +469,12 @@ class SecondFragment : Fragment() {
     interface FabVisibilityListener {
         fun showFab()
         fun hideFab()
+    }
+
+
+    fun SaveText() {
+        Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
+            .update("content", _binding!!.textviewSecond.text.toString())
+        var textSaved = true
     }
 }
