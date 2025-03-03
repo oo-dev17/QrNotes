@@ -114,16 +114,7 @@ class SecondFragment : Fragment() {
         // If the edit text contains previous text with potential links
         Linkify.addLinks(textviewSecond, Linkify.WEB_URLS)
         try {
-            val imagePath = qrNote?.ImageSubfolder()?.absolutePath
-            if (imagePath == null) {
-                _binding!!.recyclerView.post {
-                    Snackbar.make(
-                        requireView(),
-                        "imagePath == null!",
-                        Snackbar.LENGTH_SHORT
-                    ).show()
-                }
-            }
+            checkStoragePermission()
             var (images, error) = qrNote!!.getImageFiles()
             if (error !="") {
                 _binding!!.recyclerView.post {
@@ -227,8 +218,6 @@ class SecondFragment : Fragment() {
         }
     }
 
-
-
     private val REQUEST_CODE_READ_EXTERNAL_STORAGE = 100
 
     private fun checkStoragePermission() {
@@ -239,9 +228,7 @@ class SecondFragment : Fragment() {
             // Use READ_EXTERNAL_STORAGE for older versions
             Manifest.permission.READ_EXTERNAL_STORAGE
         }
-        _binding!!.recyclerView.post {
-            Snackbar.make(requireView(), "1", Snackbar.LENGTH_SHORT).show()
-        }
+
         if (ContextCompat.checkSelfPermission(
                 requireContext(), permission
             ) != PackageManager.PERMISSION_GRANTED
@@ -447,16 +434,10 @@ class SecondFragment : Fragment() {
             builder.setNegativeButton("Cancel") { dialog, _ ->
                 dialog.cancel()
             }
-
-            // Show the dialog
             builder.show()
-
-
         }
-
         binding.buttonSecond.setOnClickListener {
             launchQRCodeScanner()
-            //findNavController().navigate(R.id.action_SecondFragment_to_FirstFragment)
         }
     }
 

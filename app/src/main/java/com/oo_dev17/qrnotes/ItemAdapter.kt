@@ -1,11 +1,17 @@
 package com.oo_dev17.qrnotes
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContentProviderCompat.requireContext
+import androidx.core.content.ContextCompat
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -51,6 +57,7 @@ class ItemAdapter(
             itemLongClickListener.showQrNoteOptions(qrNote)
             true // Consume the long click event
         }
+
         val firstPics = qrNote.getImageFiles().first
         if (firstPics.isNotEmpty()) {
             // Load image using a library like Glide or Coil
@@ -58,7 +65,6 @@ class ItemAdapter(
                 .into(holder.item_image)
         }
     }
-
     override fun getItemCount(): Int {
         return items.size
     }

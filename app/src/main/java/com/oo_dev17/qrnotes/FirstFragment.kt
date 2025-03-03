@@ -1,16 +1,27 @@
 package com.oo_dev17.qrnotes
 
+import android.app.Activity
 import android.app.AlertDialog
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.firebase.firestore.FirebaseFirestore
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import com.oo_dev17.qrnotes.databinding.FragmentFirstBinding
 
 /**
@@ -34,6 +45,56 @@ class FirstFragment : Fragment(), ItemClickListener,NewQrNoteListener {
         _binding = FragmentFirstBinding.inflate(inflater, container, false)
         return binding.root
 
+
+        checkStoragePermission()
+    }
+
+    private val REQUEST_CODE_READ_EXTERNAL_STORAGE = 100
+
+    private fun checkStoragePermission() {
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Use READ_MEDIA_IMAGES for Android 13 and above
+           Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            // Use READ_EXTERNAL_STORAGE for older versions
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+
+        if (ContextCompat.checkSelfPermission(
+                requireContext(), permission
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            // Request the permission
+            ActivityCompat.requestPermissions(
+                requireActivity(), arrayOf(permission), REQUEST_CODE_READ_EXTERNAL_STORAGE
+            )
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
+        if (result.contents == null) {
+            Toast.makeText(requireContext(), "Scan cancelled", Toast.LENGTH_SHORT).show()
+        } else {
+            val scannedData = result.contents // Get the scanned QR code data
+            Toast.makeText(requireContext(), "Scanned: $scannedData", Toast.LENGTH_SHORT).show()
+            binding.searchText.setText(  scannedData.toString())
+        }
+    }
+    private fun launchQRCodeScanner() {
+        val options = ScanOptions().apply {
+            setDesiredBarcodeFormats(ScanOptions.QR_CODE) // Specify QR code format
+            setPrompt("Scan a QR code") // Set a prompt
+            setCameraId(0) // Use the default camera
+            setBeepEnabled(true) // Play a beep sound
+            setBarcodeImageEnabled(true) // Enable saving the barcode image
+        }
+
+        scanLauncher.launch(options) // Launch the scanner
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

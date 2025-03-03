@@ -61,13 +61,17 @@ data class QrNote(
     internal fun getImageFiles(): Pair<List<File>, String> {
         val subfolderPath = ImageSubfolder()?.absolutePath
         val subfolderDir = ImageSubfolder()
+
+
         if (subfolderDir == null || !subfolderDir.exists()) {
             return Pair(emptyList<File>(), "subfolderDir ${subfolderPath} does not exist!")
         }
         val imageExtensions = setOf("jpg", "jpeg", "png", "gif", "bmp", "webp")
         // Filter files in the subfolder by image extensions
         val subfolder = File(subfolderPath)
-        return Pair(subfolder.listFiles()
+        val files = subfolder.listFiles()
+        return Pair(
+            files
             ?.filter { file ->
                 file.isFile && imageExtensions.any { ext ->
                     file.name.endsWith(".$ext", ignoreCase = true)

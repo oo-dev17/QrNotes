@@ -8,6 +8,7 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
@@ -17,12 +18,15 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import com.oo_dev17.qrnotes.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity(), SecondFragment.FabVisibilityListener {
 
     private lateinit var sharedDb: FirebaseFirestore
     private lateinit var fab: FloatingActionButton
+    private lateinit var fabQr: FloatingActionButton
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
 
@@ -36,6 +40,7 @@ class MainActivity : AppCompatActivity(), SecondFragment.FabVisibilityListener {
 
         setSupportActionBar(binding.toolbar)
         fab = findViewById(R.id.fab)
+        fabQr = findViewById(R.id.fabQr)
 
         // Show the FAB by default (optional)
         showFab()
@@ -48,8 +53,30 @@ class MainActivity : AppCompatActivity(), SecondFragment.FabVisibilityListener {
         binding.fab.setOnClickListener { view ->
             showTitleInputDialog()
         }
+        binding.fabQr.setOnClickListener { view ->
+            launchQRCodeScanner()
+        }
     }
 
+    private fun launchQRCodeScanner() {
+        val options = ScanOptions().apply {
+            setDesiredBarcodeFormats(ScanOptions.QR_CODE) // Specify QR code format
+            setPrompt("Scan a QR code") // Set a prompt
+            setCameraId(0) // Use the default camera
+            setBeepEnabled(true) // Play a beep sound
+            setBarcodeImageEnabled(true) // Enable saving the barcode image
+        }
+        scanLauncher.launch(options) // Launch the scanner
+    }
+    private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
+        if (result.contents == null) {
+
+        } else {
+            val scannedData = result.contents // Get the scanned QR code data
+
+
+        }
+    }
     private fun showTitleInputDialog() {
         // Create an AlertDialog.Builder using the Activity context
         val builder = AlertDialog.Builder(this)

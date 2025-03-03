@@ -10,15 +10,23 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:padding="16dp">
+        <EditText
+            android:id="@+id/searchText"
+            android:layout_width="match_parent"
+            android:layout_height="20dp"
+            android:inputType="text"
+            app:layout_constraintStart_toStartOf="parent"
+            android:text="Name"
+            tools:layout_editor_absoluteX="81dp" />
 
-        <Button
+        <!--Button
             android:id="@+id/button_first"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/next"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="@id/searchText" /-->
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/my_recycler_view"
@@ -27,7 +35,8 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toBottomOf="@+id/searchText" />
+
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.core.widget.NestedScrollView>
