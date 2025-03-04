@@ -43,9 +43,9 @@ import java.io.File
  */
 class SecondFragment : Fragment() {
 
+    private lateinit var adapter: ImageAdapter
     private var qrNote: QrNote? = null
     private var _binding: FragmentSecondBinding? = null
-
     private var fabVisibilityListener: FabVisibilityListener? = null
 
     // This property is only valid between onCreateView and
@@ -60,7 +60,6 @@ class SecondFragment : Fragment() {
         } else {
             throw RuntimeException("$context must implement FabVisibilityListener")
         }
-
     }
 
     override fun onDetach() {
@@ -115,7 +114,7 @@ class SecondFragment : Fragment() {
         try {
             checkStoragePermission(false)
             var (images, error) = qrNote!!.getImageFiles()
-            if (error !="") {
+            if (error != "") {
                 _binding!!.recyclerView.post {
                     Snackbar.make(
                         requireView(),
@@ -144,7 +143,7 @@ class SecondFragment : Fragment() {
             val imagesItems = pictures +
                     ImageItem.ResourceImage(R.drawable.plus_sign) +
                     ImageItem.ResourceImage(android.R.drawable.ic_menu_camera)
-            val adapter = ImageAdapter(imagesItems)
+            adapter = ImageAdapter(imagesItems.toMutableList())
             recyclerView.adapter = adapter
 
 // Handle item clicks
@@ -181,7 +180,6 @@ class SecondFragment : Fragment() {
                     }
                 }
 
-
             }
         } catch (e: Exception) {
             Log.e("Firestore", "Error getting QrNotes", e)
@@ -204,7 +202,6 @@ class SecondFragment : Fragment() {
                 ).show()
             }
             return File("")
-
         }
 
         // Create the file in the subfolder
@@ -239,7 +236,7 @@ class SecondFragment : Fragment() {
         } else {
             // Permission already granted, open the gallery
             if (openGallery)
-            openGallery()
+                openGallery()
         }
     }
 
@@ -305,6 +302,9 @@ class SecondFragment : Fragment() {
         intent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
         if (intent.resolveActivity(requireActivity().packageManager) != null) {
             startActivityForResult(intent, REQUEST_CODE_CAMERA)
+            adapter.imageItems.add(0, ImageItem.FileImage(photoFile!!))
+            adapter.notifyItemInserted(0)
+
         } else {
             Snackbar.make(requireView(), "No camera app found", Snackbar.LENGTH_SHORT).show()
         }
@@ -372,11 +372,9 @@ class SecondFragment : Fragment() {
             }
         }
 
-
         // Optionally, save the URI or process the image further
         Snackbar.make(requireView(), "Image selected: $imageUri", Snackbar.LENGTH_SHORT).show()
     }
-
 
     private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
         if (result.contents == null) {
@@ -454,12 +452,10 @@ class SecondFragment : Fragment() {
         _binding = null
     }
 
-
     interface FabVisibilityListener {
         fun showFab()
         fun hideFab()
     }
-
 
     fun SaveText() {
         Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
