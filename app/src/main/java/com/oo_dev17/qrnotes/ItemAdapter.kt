@@ -21,7 +21,7 @@ class ItemAdapter(
         val titleTextView: TextView = itemView.findViewById(R.id.item_title)
         val uidTextView: TextView = itemView.findViewById(R.id.item_uid)
         val item_image: ImageView = itemView.findViewById(R.id.item_image)
-
+        val qrCodeTextView: TextView = itemView.findViewById(R.id.item_qrCode)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemViewHolder {
@@ -36,8 +36,7 @@ class ItemAdapter(
         holder.titleTextView.text = qrNote.title
         //holder.descriptionTextView.text = String.format("%20.20s", qrNote.content)
         holder.uidTextView.text = qrNote.documentId
-     val txt=   itemView?.findViewById<TextView>(R.id.item_qrCode)
-        txt?.text = qrNote.qrCode
+     holder.qrCodeTextView.text= qrNote.qrCode
 
         // Set the click listener on the item view
         holder.itemView.setOnClickListener {

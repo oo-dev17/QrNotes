@@ -12,6 +12,7 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.text.Editable
 import android.text.util.Linkify
@@ -131,6 +132,7 @@ class SecondFragment : Fragment() {
             // Create and set the adapter
             val imagesItems = pictures +
                     ImageItem.ResourceImage(R.drawable.plus_sign) +
+                    ImageItem.ResourceImage(android.R.drawable.ic_menu_gallery) +
                     ImageItem.ResourceImage(android.R.drawable.ic_menu_camera)
             adapter = ImageAdapter(imagesItems.toMutableList())
             recyclerView.adapter = adapter
@@ -165,6 +167,9 @@ class SecondFragment : Fragment() {
                         } else if (imageItem.resId == android.R.drawable.ic_menu_camera) {
                             // Check camera permission and open the camera
                             checkCameraPermission()
+                        } else if (imageItem.resId == android.R.drawable.ic_menu_gallery) {
+                            // Check camera permission and open the camera
+                            addDocument()
                         }
                     }
                 }
@@ -178,8 +183,29 @@ class SecondFragment : Fragment() {
         return binding.root
     }
 
-    private var photoFile: File? = null
+    val REQUEST_CODE_PICK_FILE = 1
 
+    private fun addDocument() {
+        openFile(Uri.EMPTY)
+    }
+
+    // Request code for selecting a PDF document.
+    val PICK_PDF_FILE = 2
+
+    fun openFile(pickerInitialUri: Uri) {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/pdf"
+
+            // Optionally, specify a URI for the file that should appear in the
+            // system file picker when it loads.
+            putExtra(DocumentsContract.EXTRA_INITIAL_URI, pickerInitialUri)
+        }
+
+        startActivityForResult(intent, PICK_PDF_FILE)
+    }
+
+    private var photoFile: File? = null
     private fun createImageFile(): File {
 
         val subfolderDir = qrNote?.ImageSubfolder()
@@ -339,6 +365,20 @@ class SecondFragment : Fragment() {
                 scanFile(imageFile)
             }
         }
+        if (requestCode == PICK_PDF_FILE && resultCode == Activity.RESULT_OK) {
+            val uri = data?.data // This is the selected file's URI
+            if (uri != null && qrNote != null) {
+                saveFile(uri, File(qrNote!!.ImageSubfolder(), "pdf.pdf"))
+            }
+        }
+    }
+
+    fun saveFile(sourceUri: Uri, destinationFile: File) {
+        requireContext().contentResolver.openInputStream(sourceUri)?.use { inputStream ->
+            destinationFile.outputStream().use { outputStream ->
+                inputStream.copyTo(outputStream)
+            }
+        }
     }
 
     private fun loadCapturedImage(bitmap: Bitmap) {
@@ -398,7 +438,6 @@ class SecondFragment : Fragment() {
             setBeepEnabled(true) // Play a beep sound
             setBarcodeImageEnabled(true) // Enable saving the barcode image
         }
-
         scanLauncher.launch(options) // Launch the scanner
     }
 

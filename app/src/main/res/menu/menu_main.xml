@@ -7,4 +7,9 @@
         android:orderInCategory="100"
         android:title="@string/action_settings"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/action_addDocument"
+        android:orderInCategory="100"
+        android:title="addDocument"
+        app:showAsAction="never" />
 </menu>

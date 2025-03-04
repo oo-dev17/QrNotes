@@ -30,12 +30,14 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tileText"
             tools:ignore="HardcodedText" />
+
         <Button
             android:id="@+id/button_second"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="SCAN"
+            android:layout_width="64dp"
+            android:layout_height="51dp"
             app:flow_horizontalAlign="end"
+            app:icon="?attr/actionModeSelectAllDrawable"
+            app:iconPadding="0dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
