@@ -15,19 +15,20 @@ class ItemAdapter(
     private val itemLongClickListener: ItemClickListener
 ) : RecyclerView.Adapter<ItemAdapter.ItemViewHolder>() {
 
+    private var itemView: View? = null
+
     class ItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val titleTextView: TextView = itemView.findViewById(R.id.item_title)
-
-        //val descriptionTextView: TextView = itemView.findViewById(R.id.item_description)
         val uidTextView: TextView = itemView.findViewById(R.id.item_uid)
         val item_image: ImageView = itemView.findViewById(R.id.item_image)
+
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemViewHolder {
-        val itemView =
+         itemView =
             LayoutInflater.from(parent.context).inflate(R.layout.item_layout, parent, false)
 
-        return ItemViewHolder(itemView)
+        return ItemViewHolder(itemView!!)
     }
 
     override fun onBindViewHolder(holder: ItemViewHolder, position: Int) {
@@ -35,6 +36,8 @@ class ItemAdapter(
         holder.titleTextView.text = qrNote.title
         //holder.descriptionTextView.text = String.format("%20.20s", qrNote.content)
         holder.uidTextView.text = qrNote.documentId
+     val txt=   itemView?.findViewById<TextView>(R.id.item_qrCode)
+        txt?.text = qrNote.qrCode
 
         // Set the click listener on the item view
         holder.itemView.setOnClickListener {

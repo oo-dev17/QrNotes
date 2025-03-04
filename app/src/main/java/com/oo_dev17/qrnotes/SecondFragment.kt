@@ -95,6 +95,7 @@ class SecondFragment : Fragment() {
                 binding.textviewSecond.text =
                     Editable.Factory.getInstance().newEditable(qrNote!!.content)
                 titleText.text = qrNote?.title ?: "No title"
+                binding.qrCode.text = qrNote!!.qrCode
             }
         }
         // If the edit text contains previous text with potential links
@@ -369,9 +370,23 @@ class SecondFragment : Fragment() {
         if (result.contents == null) {
             Toast.makeText(requireContext(), "Scan cancelled", Toast.LENGTH_SHORT).show()
         } else {
-            val scannedData = result.contents // Get the scanned QR code data
-            Toast.makeText(requireContext(), "Scanned: $scannedData", Toast.LENGTH_SHORT).show()
-            binding.qrCode.text = scannedData
+            val qrCode = result.contents // Get the scanned QR code data
+            Toast.makeText(requireContext(), "Scanned: $qrCode", Toast.LENGTH_SHORT).show()
+            Firebase.firestore.collection("qrNotes").whereEqualTo("qrCode", qrCode)
+                .get()
+                .addOnSuccessListener { documents ->
+                    if (documents.isEmpty) {
+                        binding.qrCode.text = qrCode
+                        Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
+                            .update("qrCode", qrCode)
+                    } else {
+                        Toast.makeText(
+                            requireContext(),
+                            "Scanned: $qrCode ALREADY EXISTS",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
         }
     }
 
@@ -398,26 +413,15 @@ class SecondFragment : Fragment() {
             val input = EditText(requireContext()).apply {
                 setText(qrNote!!.title)
             }
-
             builder.setView(input)
-
-            // Set up the buttons
             builder.setPositiveButton("Change") { dialog, _ ->
                 val title = input.text.toString()
                 if (title.isNotEmpty()) {
 
                     tileTextView.text = title
                     tileTextView.requestFocus()
-                    val updates = hashMapOf<String, Any>(
-                        "${qrNote!!::title.name}" to title
-                    )
-
                     Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
-                        .update(updates).addOnSuccessListener {
-                            Log.d("Firestore", "Note updated with ID: ${qrNote!!.documentId}")
-                        }.addOnFailureListener { e ->
-                            Log.w("Firestore", "Error adding note", e)
-                        }
+                        .update("${qrNote!!::title.name}", title)
                 } else {
                     Snackbar.make(
                         requireView(), "Title cannot be empty", Toast.LENGTH_SHORT

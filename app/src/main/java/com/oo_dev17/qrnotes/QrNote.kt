@@ -9,6 +9,7 @@ data class QrNote(
     val title: String? = null,
     val content: String? = null,
     val creationDate: Long = System.currentTimeMillis(),
+    val qrCode: String = "",
     var documentId: String? = null
 ) : Parcelable {
 
@@ -17,6 +18,7 @@ data class QrNote(
         parcel.readString()!!,
         parcel.readString()!!,
         parcel.readLong(),
+        parcel.readString()!!,
         parcel.readString()!!
     )
 

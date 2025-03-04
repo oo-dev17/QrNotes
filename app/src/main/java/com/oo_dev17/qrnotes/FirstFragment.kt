@@ -153,7 +153,20 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
 
         } else {
             val scannedData = result.contents // Get the scanned QR code data
-        }
+            try {
+                val note = qrNotes.firstOrNull() { note -> note.qrCode == scannedData }
+                if (note == null) {
+                    Toast.makeText(requireContext(), "QR code not found: $scannedData", Toast.LENGTH_SHORT).show()
+                    return@registerForActivityResult
+                }
+                val bundle = Bundle()
+                bundle.putParcelable("qrNote", note)
+                findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment, bundle)
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "QR code not found", Toast.LENGTH_SHORT).show()
+            }
+            }
+
     }
 
     @Deprecated("Deprecated in Java")
