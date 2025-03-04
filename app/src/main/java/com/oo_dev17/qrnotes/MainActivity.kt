@@ -171,10 +171,12 @@ class MainActivity : AppCompatActivity(), SecondFragment.FabVisibilityListener {
     // Method to show the FAB
     override fun showFab() {
         fab.show()
+        fabQr.show()
     }
 
     // Method to hide the FAB
     override fun hideFab() {
         fab.hide()
+        fabQr.hide()
     }
 }

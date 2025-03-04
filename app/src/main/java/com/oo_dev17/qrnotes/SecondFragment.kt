@@ -14,7 +14,6 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.text.Editable
-import android.text.TextWatcher
 import android.text.util.Linkify
 import android.util.Log
 import android.view.LayoutInflater
@@ -114,7 +113,7 @@ class SecondFragment : Fragment() {
         // If the edit text contains previous text with potential links
         Linkify.addLinks(textviewSecond, Linkify.WEB_URLS)
         try {
-            checkStoragePermission()
+            checkStoragePermission(false)
             var (images, error) = qrNote!!.getImageFiles()
             if (error !="") {
                 _binding!!.recyclerView.post {
@@ -174,7 +173,7 @@ class SecondFragment : Fragment() {
                                     Snackbar.LENGTH_SHORT
                                 ).show()
                             }
-                            checkStoragePermission()
+                            checkStoragePermission(true)
                         } else if (imageItem.resId == android.R.drawable.ic_menu_camera) {
                             // Check camera permission and open the camera
                             checkCameraPermission()
@@ -220,7 +219,7 @@ class SecondFragment : Fragment() {
 
     private val REQUEST_CODE_READ_EXTERNAL_STORAGE = 100
 
-    private fun checkStoragePermission() {
+    private fun checkStoragePermission(openGallery: Boolean) {
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // Use READ_MEDIA_IMAGES for Android 13 and above
             Manifest.permission.READ_MEDIA_IMAGES
@@ -239,6 +238,7 @@ class SecondFragment : Fragment() {
             )
         } else {
             // Permission already granted, open the gallery
+            if (openGallery)
             openGallery()
         }
     }
@@ -364,6 +364,14 @@ class SecondFragment : Fragment() {
         // Example: Load the image into an ImageView
         val imageView: ImageView = requireView().findViewById(R.id.imageView)
         imageView.setImageURI(imageUri)
+
+        requireContext().contentResolver.openInputStream(imageUri)?.use { inputStream ->
+            val outputFile = File(qrNote!!.ImageSubfolder(), "${System.currentTimeMillis()}.jpg")
+            outputFile.outputStream().use { outputStream ->
+                inputStream.copyTo(outputStream)
+            }
+        }
+
 
         // Optionally, save the URI or process the image further
         Snackbar.make(requireView(), "Image selected: $imageUri", Snackbar.LENGTH_SHORT).show()
