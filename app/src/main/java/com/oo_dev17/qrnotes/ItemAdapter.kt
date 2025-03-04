@@ -18,9 +18,10 @@ import com.bumptech.glide.Glide
 
 
 class ItemAdapter(
-    private val items: List<QrNote>,
+    public var items: List<QrNote>,
     private val itemLongClickListener: ItemClickListener
 ) : RecyclerView.Adapter<ItemAdapter.ItemViewHolder>() {
+
 
     class ItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val titleTextView: TextView = itemView.findViewById(R.id.item_title)

@@ -8,6 +8,10 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        create("Costa") {
+        }
+    }
     namespace = "com.oo_dev17.qrnotes"
     compileSdk = 35
 

@@ -9,6 +9,8 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -27,7 +29,7 @@ import com.oo_dev17.qrnotes.databinding.FragmentFirstBinding
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
  */
-class FirstFragment : Fragment(), ItemClickListener,NewQrNoteListener {
+class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
 
     private lateinit var itemAdapter: ItemAdapter
     private lateinit var qrNotes: MutableList<QrNote>
@@ -41,20 +43,16 @@ class FirstFragment : Fragment(), ItemClickListener,NewQrNoteListener {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-
         _binding = FragmentFirstBinding.inflate(inflater, container, false)
         return binding.root
-
-
         checkStoragePermission()
     }
 
     private val REQUEST_CODE_READ_EXTERNAL_STORAGE = 100
-
     private fun checkStoragePermission() {
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // Use READ_MEDIA_IMAGES for Android 13 and above
-           Manifest.permission.READ_MEDIA_IMAGES
+            Manifest.permission.READ_MEDIA_IMAGES
         } else {
             // Use READ_EXTERNAL_STORAGE for older versions
             Manifest.permission.READ_EXTERNAL_STORAGE
@@ -82,9 +80,10 @@ class FirstFragment : Fragment(), ItemClickListener,NewQrNoteListener {
         } else {
             val scannedData = result.contents // Get the scanned QR code data
             Toast.makeText(requireContext(), "Scanned: $scannedData", Toast.LENGTH_SHORT).show()
-            binding.searchText.setText(  scannedData.toString())
+            binding.searchText.setText(scannedData.toString())
         }
     }
+
     private fun launchQRCodeScanner() {
         val options = ScanOptions().apply {
             setDesiredBarcodeFormats(ScanOptions.QR_CODE) // Specify QR code format
@@ -114,10 +113,34 @@ class FirstFragment : Fragment(), ItemClickListener,NewQrNoteListener {
             binding.myRecyclerView.layoutManager = LinearLayoutManager(requireContext())
             recyclerView.adapter = itemAdapter
         }
+        binding.searchText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+
+                val query = s.toString().trim()
+                if (query.isEmpty()) {
+                    itemAdapter.items = qrNotes
+                } else {
+                    itemAdapter.items = filterQrNotes(query)
+                }
+                itemAdapter.run { notifyDataSetChanged() }
+            }
+
+            override fun afterTextChanged(s: Editable?) {}
+        })
+    }
+
+    private fun filterQrNotes(query: String): List<QrNote> {
+
+        return qrNotes.filter { qrNote ->
+            qrNote.title?.contains(query, ignoreCase = true)==true ||
+                    qrNote.content?.contains(query, ignoreCase = true)==true||
+                    qrNote.documentId?.contains(query, ignoreCase = true)==true
+        }
     }
 
     private fun getAllQrNotes(callback: (List<QrNote>) -> Unit) {
-
 
         val db = FirebaseFirestore.getInstance()
         db.collection("qrNotes")
@@ -131,9 +154,12 @@ class FirstFragment : Fragment(), ItemClickListener,NewQrNoteListener {
                     }
                     callback(notes)
                 } catch (e: Exception) {
-                    Log.e("Firestore", "Error converting Firestore documents to QrNote objects", e)
+                    Log.e(
+                        "Firestore",
+                        "Error converting Firestore documents to QrNote objects",
+                        e
+                    )
                 }
-
 
             }
             .addOnFailureListener { exception ->
@@ -149,7 +175,6 @@ class FirstFragment : Fragment(), ItemClickListener,NewQrNoteListener {
     override fun onItemClicked(item: QrNote) {
         //  (requireActivity() as MainActivity).sharedQrNote = item
         findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)
-
     }
 
     override fun showQrNoteOptions(qrNote: QrNote) {
@@ -173,10 +198,15 @@ class FirstFragment : Fragment(), ItemClickListener,NewQrNoteListener {
             FirebaseFirestore.getInstance().collection("qrNotes").document(qrNote.documentId!!)
                 .delete()
             itemAdapter.notifyItemRemoved(position)
-            Toast.makeText(requireContext(), "QrNote ${qrNote.title} deleted", Toast.LENGTH_SHORT)
+            Toast.makeText(
+                requireContext(),
+                "QrNote ${qrNote.title} deleted",
+                Toast.LENGTH_SHORT
+            )
                 .show()
         }
     }
+
     override fun onNewQrNote(qrNote: QrNote) {
         qrNotes.add(0, qrNote)
         itemAdapter.notifyItemInserted(0)
