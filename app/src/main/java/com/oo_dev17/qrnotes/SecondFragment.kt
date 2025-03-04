@@ -46,7 +46,6 @@ class SecondFragment : Fragment() {
     private lateinit var adapter: ImageAdapter
     private var qrNote: QrNote? = null
     private var _binding: FragmentSecondBinding? = null
-    private var fabVisibilityListener: FabVisibilityListener? = null
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -54,30 +53,19 @@ class SecondFragment : Fragment() {
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        // Check if the activity implements the interface
-        if (context is FabVisibilityListener) {
-            fabVisibilityListener = context
-        } else {
-            throw RuntimeException("$context must implement FabVisibilityListener")
-        }
     }
 
     override fun onDetach() {
         super.onDetach()
-        fabVisibilityListener = null
     }
 
     override fun onResume() {
         super.onResume()
-        // Hide the FAB when the fragment is visible
-        fabVisibilityListener?.hideFab()
     }
 
     override fun onPause() {
         super.onPause()
         SaveText()
-        // Show the FAB when the fragment is no longer visible
-        fabVisibilityListener?.showFab()
     }
 
     override fun onCreateView(
@@ -184,6 +172,8 @@ class SecondFragment : Fragment() {
         } catch (e: Exception) {
             Log.e("Firestore", "Error getting QrNotes", e)
         }
+
+
         return binding.root
     }
 
@@ -304,7 +294,6 @@ class SecondFragment : Fragment() {
             startActivityForResult(intent, REQUEST_CODE_CAMERA)
             adapter.imageItems.add(0, ImageItem.FileImage(photoFile!!))
             adapter.notifyItemInserted(0)
-
         } else {
             Snackbar.make(requireView(), "No camera app found", Snackbar.LENGTH_SHORT).show()
         }
@@ -450,11 +439,6 @@ class SecondFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-    }
-
-    interface FabVisibilityListener {
-        fun showFab()
-        fun hideFab()
     }
 
     fun SaveText() {

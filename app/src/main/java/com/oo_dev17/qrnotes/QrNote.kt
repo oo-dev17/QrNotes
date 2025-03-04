@@ -3,9 +3,7 @@ package com.oo_dev17.qrnotes
 import android.os.Environment
 import android.os.Parcel
 import android.os.Parcelable
-import com.google.android.material.snackbar.Snackbar
 import java.io.File
-
 
 data class QrNote(
     val title: String? = null,
@@ -13,7 +11,6 @@ data class QrNote(
     val creationDate: Long = System.currentTimeMillis(),
     var documentId: String? = null
 ) : Parcelable {
-
 
     // Constructor to create a QrNote from a Parcel
     constructor(parcel: Parcel) : this(
@@ -55,7 +52,6 @@ data class QrNote(
         if (!subfolderDir.exists())
             subfolderDir.mkdirs()
         return subfolderDir
-
     }
 
     internal fun getImageFiles(): Pair<List<File>, String> {
@@ -72,11 +68,12 @@ data class QrNote(
         val files = subfolder.listFiles()
         return Pair(
             files
-            ?.filter { file ->
-                file.isFile && imageExtensions.any { ext ->
-                    file.name.endsWith(".$ext", ignoreCase = true)
+                ?.filter { file ->
+                    file.isFile && imageExtensions.any { ext ->
+                        file.name.endsWith(".$ext", ignoreCase = true)
+                    }
                 }
-            }
-            ?: emptyList(), "") // Return an empty list if the subfolder is empty or inaccessible
+                ?: emptyList(),
+            "") // Return an empty list if the subfolder is empty or inaccessible
     }
 }

@@ -1,12 +1,9 @@
 package com.oo_dev17.qrnotes
 
-import android.app.Activity
-import android.app.AlertDialog
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.text.Editable
@@ -15,13 +12,16 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.firebase.Firebase
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.firestore
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.oo_dev17.qrnotes.databinding.FragmentFirstBinding
@@ -44,8 +44,64 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentFirstBinding.inflate(inflater, container, false)
-        return binding.root
         checkStoragePermission()
+        binding.fab.setOnClickListener { view ->
+            showTitleInputDialog()
+        }
+        binding.fabQr.setOnClickListener { view ->
+            launchQRCodeScanner1()
+        }
+        return binding.root
+    }
+
+    private fun showTitleInputDialog() {
+        // Create an AlertDialog.Builder using the Activity context
+        val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+        builder.setTitle("Create New Note")
+        builder.setMessage("Enter a title for the note")
+        val sharedDb = Firebase.firestore
+        // Set up the input field
+        val input = EditText(requireContext())
+        input.hint = "Title"
+        builder.setView(input)
+
+        // Set up the buttons
+        builder.setPositiveButton("Create") { dialog, _ ->
+            val title = input.text.toString()
+            if (title.isNotEmpty()) {
+                // Create a new QrNote object
+                val note = QrNote(title, "") // Empty content for now
+
+                sharedDb.collection("qrNotes").add(note).addOnSuccessListener { docRef ->
+                    Log.d("Firestore", "Note added with ID: ${docRef.id}")
+                    sharedDb.collection("qrNotes").document(docRef.id).update("id", docRef.id)
+                    note.documentId = docRef.id
+
+                    onNewQrNote(note)
+                    // Jump to second fragment
+                    val bundle = Bundle()
+                    // Put the QrNote into the Bundle
+                    bundle.putParcelable("qrNote", note)
+                    //  (requireActivity() as MainActivity).sharedQrNote = item
+                    // Navigate to SecondFragment with the Bundle
+                    val navController = findNavController()
+                    navController.navigate(R.id.action_FirstFragment_to_SecondFragment, bundle)
+
+                }.addOnFailureListener { e ->
+                    Log.w("Firestore", "Error adding note", e)
+                }
+            } else {
+                Toast.makeText(requireContext(), "Title cannot be empty", Toast.LENGTH_SHORT).show()
+            }
+            dialog.dismiss()
+        }
+
+        builder.setNegativeButton("Cancel") { dialog, _ ->
+            dialog.cancel()
+        }
+
+        // Show the dialog
+        builder.show()
     }
 
     private val REQUEST_CODE_READ_EXTERNAL_STORAGE = 100
@@ -69,6 +125,37 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         }
     }
 
+    private fun launchQRCodeScanner() {
+        val options = ScanOptions().apply {
+            setDesiredBarcodeFormats(ScanOptions.QR_CODE) // Specify QR code format
+            setPrompt("Scan a QR code") // Set a prompt
+            setCameraId(0) // Use the default camera
+            setBeepEnabled(true) // Play a beep sound
+            setBarcodeImageEnabled(true) // Enable saving the barcode image
+        }
+
+        scanLauncher.launch(options) // Launch the scanner
+    }
+
+    private fun launchQRCodeScanner1() {
+        val options = ScanOptions().apply {
+            setDesiredBarcodeFormats(ScanOptions.QR_CODE) // Specify QR code format
+            setPrompt("Scan a QR code") // Set a prompt
+            setCameraId(0) // Use the default camera
+            setBeepEnabled(true) // Play a beep sound
+            setBarcodeImageEnabled(true) // Enable saving the barcode image
+        }
+        scanLauncher1.launch(options) // Launch the scanner
+    }
+
+    private val scanLauncher1 = registerForActivityResult(ScanContract()) { result ->
+        if (result.contents == null) {
+
+        } else {
+            val scannedData = result.contents // Get the scanned QR code data
+        }
+    }
+
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -82,18 +169,6 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             Toast.makeText(requireContext(), "Scanned: $scannedData", Toast.LENGTH_SHORT).show()
             binding.searchText.setText(scannedData.toString())
         }
-    }
-
-    private fun launchQRCodeScanner() {
-        val options = ScanOptions().apply {
-            setDesiredBarcodeFormats(ScanOptions.QR_CODE) // Specify QR code format
-            setPrompt("Scan a QR code") // Set a prompt
-            setCameraId(0) // Use the default camera
-            setBeepEnabled(true) // Play a beep sound
-            setBarcodeImageEnabled(true) // Enable saving the barcode image
-        }
-
-        scanLauncher.launch(options) // Launch the scanner
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -134,9 +209,9 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
     private fun filterQrNotes(query: String): List<QrNote> {
 
         return qrNotes.filter { qrNote ->
-            qrNote.title?.contains(query, ignoreCase = true)==true ||
-                    qrNote.content?.contains(query, ignoreCase = true)==true||
-                    qrNote.documentId?.contains(query, ignoreCase = true)==true
+            qrNote.title?.contains(query, ignoreCase = true) == true ||
+                    qrNote.content?.contains(query, ignoreCase = true) == true ||
+                    qrNote.documentId?.contains(query, ignoreCase = true) == true
         }
     }
 

@@ -1,30 +1,23 @@
 package com.oo_dev17.qrnotes
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContentProviderCompat.requireContext
-import androidx.core.content.ContextCompat
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-
 
 class ItemAdapter(
     public var items: List<QrNote>,
     private val itemLongClickListener: ItemClickListener
 ) : RecyclerView.Adapter<ItemAdapter.ItemViewHolder>() {
 
-
     class ItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val titleTextView: TextView = itemView.findViewById(R.id.item_title)
+
         //val descriptionTextView: TextView = itemView.findViewById(R.id.item_description)
         val uidTextView: TextView = itemView.findViewById(R.id.item_uid)
         val item_image: ImageView = itemView.findViewById(R.id.item_image)
@@ -66,6 +59,7 @@ class ItemAdapter(
                 .into(holder.item_image)
         }
     }
+
     override fun getItemCount(): Int {
         return items.size
     }
