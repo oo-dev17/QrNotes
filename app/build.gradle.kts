@@ -60,12 +60,15 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
+    implementation(platform(libs.firebase.bom.v3223)) // Or latest version
+    implementation(libs.firebase.storage.ktx) //KTX version for Kotlin
     implementation(libs.googleid)
     implementation(libs.zxing.android.embedded)
+    implementation(libs.firebase.storage)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    implementation(libs.firebase.bom)
+    implementation(platform(libs.firebase.bom))
     implementation(libs.glide) // Use the latest version
     annotationProcessor(libs.compiler) // For annotation processing (if needed)
 }

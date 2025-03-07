@@ -34,6 +34,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
+import com.google.firebase.storage.storage
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.oo_dev17.qrnotes.databinding.FragmentSecondBinding
@@ -47,6 +48,9 @@ class SecondFragment : Fragment() {
     private lateinit var adapter: ImageAdapter
     private var qrNote: QrNote? = null
     private var _binding: FragmentSecondBinding? = null
+    // Create a storage reference from our app
+    private val storage = Firebase.storage
+    private var storageRef = storage.reference
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -368,18 +372,15 @@ class SecondFragment : Fragment() {
         if (requestCode == PICK_PDF_FILE && resultCode == Activity.RESULT_OK) {
             val uri = data?.data // This is the selected file's URI
             if (uri != null && qrNote != null) {
-                saveFile(uri, File(qrNote!!.ImageSubfolder(), "pdf.pdf"))
+
+                val pdfRef = storageRef.child("mountains.jpg")
+                val pdfFileRef = storageRef.child("images/mountains.jpg")
+                pdfFileRef.putFile(uri)
             }
         }
     }
 
-    fun saveFile(sourceUri: Uri, destinationFile: File) {
-        requireContext().contentResolver.openInputStream(sourceUri)?.use { inputStream ->
-            destinationFile.outputStream().use { outputStream ->
-                inputStream.copyTo(outputStream)
-            }
-        }
-    }
+
 
     private fun loadCapturedImage(bitmap: Bitmap) {
         // Example: Load the captured image into an ImageView
