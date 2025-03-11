@@ -375,7 +375,12 @@ class SecondFragment : Fragment() {
 
                 val pdfRef = storageRef.child("mountains.jpg")
                 val pdfFileRef = storageRef.child("images/mountains.jpg")
-                pdfFileRef.putFile(uri)
+               val uploadTask= pdfFileRef.putFile(uri)
+                uploadTask.addOnFailureListener {exception->
+                    Toast.makeText(requireContext(), "Upload failed: " + exception.message, Toast.LENGTH_SHORT).show()
+                }.addOnSuccessListener { taskSnapshot ->
+                    Toast.makeText(requireContext(), "Upload successful", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -433,7 +438,7 @@ class SecondFragment : Fragment() {
 
     private fun launchQRCodeScanner() {
         val options = ScanOptions().apply {
-            setDesiredBarcodeFormats(ScanOptions.QR_CODE) // Specify QR code format
+            setDesiredBarcodeFormats(listOf(ScanOptions.EAN_13, ScanOptions.EAN_8, ScanOptions.QR_CODE)) // Specify QR code format
             setPrompt("Scan a QR code") // Set a prompt
             setCameraId(0) // Use the default camera
             setBeepEnabled(true) // Play a beep sound
