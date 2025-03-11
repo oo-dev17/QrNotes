@@ -48,6 +48,7 @@ class SecondFragment : Fragment() {
     private lateinit var adapter: ImageAdapter
     private var qrNote: QrNote? = null
     private var _binding: FragmentSecondBinding? = null
+
     // Create a storage reference from our app
     private val storage = Firebase.storage
     private var storageRef = storage.reference
@@ -107,45 +108,15 @@ class SecondFragment : Fragment() {
         Linkify.addLinks(textviewSecond, Linkify.WEB_URLS)
         try {
             checkStoragePermission(false)
-            var (images, error) = qrNote!!.getImageFiles()
-            if (error != "") {
-                _binding!!.recyclerView.post {
-                    Snackbar.make(
-                        requireView(),
-                        error,
-                        Snackbar.LENGTH_SHORT
-                    ).show()
-                }
-                return binding.root
-            }
 
-            // Get the RecyclerView
-            val recyclerView: RecyclerView = binding.recyclerView
-            val pictures = images.map { ImageItem.FileImage(it) }
-            _binding!!.recyclerView.post {
-                Snackbar.make(
-                    requireView(),
-                    "Number of images: ${pictures.size}",
-                    Snackbar.LENGTH_SHORT
-                ).show()
-            }
-
-            // Set up the RecyclerView with a horizontal LinearLayoutManager
-            recyclerView.layoutManager =
-                LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
-            // Create and set the adapter
-            val imagesItems = pictures +
-                    ImageItem.ResourceImage(R.drawable.plus_sign) +
-                    ImageItem.ResourceImage(android.R.drawable.ic_menu_gallery) +
-                    ImageItem.ResourceImage(android.R.drawable.ic_menu_camera)
-            adapter = ImageAdapter(imagesItems.toMutableList())
-            recyclerView.adapter = adapter
+            SetupImagesRecycler()
+            SetupFilesRecycler()
 
 // Handle item clicks
             adapter.onItemClick = { imageItem ->
                 when (imageItem) {
                     is ImageItem.FileImage -> {
-                        _binding!!.recyclerView.post {
+                        _binding!!.recyclerViewImages.post {
                             Snackbar.make(
                                 requireView(),
                                 "Image clicked: ${imageItem.file}",
@@ -160,7 +131,7 @@ class SecondFragment : Fragment() {
                     is ImageItem.ResourceImage -> {
                         if (imageItem.resId == R.drawable.plus_sign) {
                             // Check storage permission and open the gallery
-                            _binding!!.recyclerView.post {
+                            _binding!!.recyclerViewImages.post {
                                 Snackbar.make(
                                     requireView(),
                                     "Book details loaded!",
@@ -176,6 +147,8 @@ class SecondFragment : Fragment() {
                             addDocument()
                         }
                     }
+
+                    is ImageItem.FileString -> TODO()
                 }
 
             }
@@ -185,6 +158,72 @@ class SecondFragment : Fragment() {
 
 
         return binding.root
+    }
+
+    private fun SetupImagesRecycler() {
+        var (images, error) = qrNote!!.getImageFiles()
+        if (error != "") {
+            _binding!!.recyclerViewImages.post {
+                Snackbar.make(
+                    requireView(),
+                    error,
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            }
+            return
+        }
+
+        // Get the RecyclerView for images
+        val recyclerViewImages: RecyclerView = binding.recyclerViewImages
+        val pictures = images.map { ImageItem.FileImage(it) }
+        /*_binding!!.recyclerView.post {
+                Snackbar.make(
+                    requireView(),
+                    "Number of images: ${pictures.size}",
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            }*/
+
+        // Set up the RecyclerView with a horizontal LinearLayoutManager
+        recyclerViewImages.layoutManager =
+            LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+        // Create and set the adapter
+        val imagesItems = pictures +
+                ImageItem.ResourceImage(R.drawable.plus_sign) +
+                ImageItem.ResourceImage(android.R.drawable.ic_menu_gallery) +
+                ImageItem.ResourceImage(android.R.drawable.ic_menu_camera)
+        adapter = ImageAdapter(imagesItems.toMutableList())
+        recyclerViewImages.adapter = adapter
+    }
+
+    private fun SetupFilesRecycler() {
+
+        val all = storageRef.child(qrNote!!.documentId!!).listAll()
+        all.addOnSuccessListener { listResult ->
+            run {
+                val files = listResult.items.map { it.name }
+                _binding!!.recyclerViewFiles.post {
+                    Snackbar.make(
+                        requireView(),
+                        "Number of files: ${files.size}",
+                        Snackbar.LENGTH_SHORT
+                    )
+                }
+                // Get the RecyclerView for files
+                val recyclerViewFiles: RecyclerView = binding.recyclerViewFiles
+
+                val pictures = files.map { ImageItem.FileString(it) }
+                // Set up the RecyclerView with a horizontal LinearLayoutManager
+                recyclerViewFiles.layoutManager =
+                    LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+                // Create and set the adapter
+                val imagesItems = pictures +
+                        ImageItem.ResourceImage(R.drawable.plus_sign)
+                adapter = ImageAdapter(imagesItems.toMutableList())
+                recyclerViewFiles.adapter = adapter
+
+            }
+        }
     }
 
     val REQUEST_CODE_PICK_FILE = 1
@@ -215,7 +254,7 @@ class SecondFragment : Fragment() {
         val subfolderDir = qrNote?.ImageSubfolder()
 
         if (subfolderDir == null) {
-            _binding!!.recyclerView.post {
+            _binding!!.recyclerViewImages.post {
                 Snackbar.make(
                     requireView(),
                     "subfolderDir == null!",
@@ -291,7 +330,7 @@ class SecondFragment : Fragment() {
                 openGallery()
             } else {
                 // Permission denied, show a message
-                _binding!!.recyclerView.post {
+                _binding!!.recyclerViewImages.post {
                     Snackbar.make(requireView(), "Storage permission denied", Snackbar.LENGTH_SHORT)
                         .show()
                 }
@@ -303,7 +342,7 @@ class SecondFragment : Fragment() {
                 openCamera()
             } else {
                 // Permission denied, show a message
-                _binding!!.recyclerView.post {
+                _binding!!.recyclerViewImages.post {
                     Snackbar.make(requireView(), "Camera permission denied", Snackbar.LENGTH_SHORT)
                         .show()
                 }
@@ -372,20 +411,25 @@ class SecondFragment : Fragment() {
         if (requestCode == PICK_PDF_FILE && resultCode == Activity.RESULT_OK) {
             val uri = data?.data // This is the selected file's URI
             if (uri != null && qrNote != null) {
+                val cursor = requireContext().contentResolver.query(uri, null, null, null, null)
+                cursor?.moveToFirst()
+                val fileName = cursor?.getString(cursor.getColumnIndexOrThrow("_display_name"))
+                cursor?.close()
 
-                val pdfRef = storageRef.child("mountains.jpg")
-                val pdfFileRef = storageRef.child("images/mountains.jpg")
-               val uploadTask= pdfFileRef.putFile(uri)
-                uploadTask.addOnFailureListener {exception->
-                    Toast.makeText(requireContext(), "Upload failed: " + exception.message, Toast.LENGTH_SHORT).show()
+                val pdfFileRef = storageRef.child(qrNote!!.documentId + "/" + fileName)
+                val uploadTask = pdfFileRef.putFile(uri)
+                uploadTask.addOnFailureListener { exception ->
+                    Toast.makeText(
+                        requireContext(),
+                        "Upload failed: " + exception.message,
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }.addOnSuccessListener { taskSnapshot ->
                     Toast.makeText(requireContext(), "Upload successful", Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
-
-
 
     private fun loadCapturedImage(bitmap: Bitmap) {
         // Example: Load the captured image into an ImageView
@@ -438,7 +482,13 @@ class SecondFragment : Fragment() {
 
     private fun launchQRCodeScanner() {
         val options = ScanOptions().apply {
-            setDesiredBarcodeFormats(listOf(ScanOptions.EAN_13, ScanOptions.EAN_8, ScanOptions.QR_CODE)) // Specify QR code format
+            setDesiredBarcodeFormats(
+                listOf(
+                    ScanOptions.EAN_13,
+                    ScanOptions.EAN_8,
+                    ScanOptions.QR_CODE
+                )
+            ) // Specify QR code format
             setPrompt("Scan a QR code") // Set a prompt
             setCameraId(0) // Use the default camera
             setBeepEnabled(true) // Play a beep sound

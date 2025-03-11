@@ -29,17 +29,25 @@ class ImageAdapter(public val imageItems: MutableList<ImageItem>) :
                     .load(imageItem.file)
                     .into(holder.imageView)
             }
+
             is ImageItem.ResourceImage -> {
                 // Load image from resource ID
                 holder.imageView.setImageResource(imageItem.resId)
             }
-        }
 
-        // Set click listener for the item
-        holder.itemView.setOnClickListener {
-            onItemClick?.invoke(imageItem)
-        }
+            is ImageItem.FileString -> {
+                // Load image from file using Glide
+                Glide.with(holder.itemView.context)
+                    .load(File(imageItem.resId))
+                    .into(holder.imageView)
+            }
     }
+
+            // Set click listener for the item
+            holder.itemView.setOnClickListener {
+                onItemClick?.invoke(imageItem)
+            }
+        }
 
     override fun getItemCount(): Int {
         return imageItems.size
