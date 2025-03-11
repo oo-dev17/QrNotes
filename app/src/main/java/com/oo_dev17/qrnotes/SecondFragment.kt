@@ -148,7 +148,6 @@ class SecondFragment : Fragment() {
                         }
                     }
 
-                    is ImageItem.FileString -> TODO()
                 }
 
             }
@@ -212,16 +211,21 @@ class SecondFragment : Fragment() {
                 // Get the RecyclerView for files
                 val recyclerViewFiles: RecyclerView = binding.recyclerViewFiles
 
-                val pictures = files.map { ImageItem.FileString(it) }
                 // Set up the RecyclerView with a horizontal LinearLayoutManager
                 recyclerViewFiles.layoutManager =
                     LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
                 // Create and set the adapter
-                val imagesItems = pictures +
-                        ImageItem.ResourceImage(R.drawable.plus_sign)
-                adapter = ImageAdapter(imagesItems.toMutableList())
-                recyclerViewFiles.adapter = adapter
+               // val imagesItems = pictures +                        ImageItem.ResourceImage(R.drawable.plus_sign)
 
+
+                val stringList =
+                    listOf("String 1", "String 2", "String 3", "String 4", "String 5", "String 6")
+                // Create and set the adapter
+                val stringAdapter = StringAdapter(stringList)
+                recyclerViewFiles.adapter = stringAdapter
+
+                // Set the layout manager
+                recyclerViewFiles.layoutManager = LinearLayoutManager(requireContext())
             }
         }
     }

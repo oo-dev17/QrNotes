@@ -34,13 +34,6 @@ class ImageAdapter(public val imageItems: MutableList<ImageItem>) :
                 // Load image from resource ID
                 holder.imageView.setImageResource(imageItem.resId)
             }
-
-            is ImageItem.FileString -> {
-                // Load image from file using Glide
-                Glide.with(holder.itemView.context)
-                    .load(File(imageItem.resId))
-                    .into(holder.imageView)
-            }
     }
 
             // Set click listener for the item
