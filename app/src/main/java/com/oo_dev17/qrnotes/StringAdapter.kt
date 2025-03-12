@@ -7,6 +7,8 @@ import androidx.recyclerview.widget.RecyclerView
 class StringAdapter(private val stringList: List<String>) :
     RecyclerView.Adapter<StringViewHolder>() {
 
+    var onItemClick: ((String) -> Unit)? = null
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): StringViewHolder {
         val itemView =
             LayoutInflater.from(parent.context).inflate(R.layout.fragment_second, parent, false)
@@ -14,7 +16,13 @@ class StringAdapter(private val stringList: List<String>) :
     }
 
     override fun onBindViewHolder(holder: StringViewHolder, position: Int) {
-        holder.stringTextView.text = stringList[position]
+        val stringEntry = stringList[position]
+        holder.stringTextView.text = stringEntry
+
+        // Set click listener for the item
+        holder.itemView.setOnClickListener {
+            onItemClick?.invoke(stringEntry)
+        }
     }
 
     override fun getItemCount(): Int {

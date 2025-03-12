@@ -45,7 +45,8 @@ import java.io.File
  */
 class SecondFragment : Fragment() {
 
-    private lateinit var adapter: ImageAdapter
+    private lateinit var imageAdapter: ImageAdapter
+    private lateinit var stringAdapter: StringAdapter
     private var qrNote: QrNote? = null
     private var _binding: FragmentSecondBinding? = null
 
@@ -113,7 +114,7 @@ class SecondFragment : Fragment() {
             SetupFilesRecycler()
 
 // Handle item clicks
-            adapter.onItemClick = { imageItem ->
+            imageAdapter.onItemClick = { imageItem ->
                 when (imageItem) {
                     is ImageItem.FileImage -> {
                         _binding!!.recyclerViewImages.post {
@@ -147,10 +148,9 @@ class SecondFragment : Fragment() {
                             addDocument()
                         }
                     }
-
                 }
-
             }
+
         } catch (e: Exception) {
             Log.e("Firestore", "Error getting QrNotes", e)
         }
@@ -191,12 +191,11 @@ class SecondFragment : Fragment() {
                 ImageItem.ResourceImage(R.drawable.plus_sign) +
                 ImageItem.ResourceImage(android.R.drawable.ic_menu_gallery) +
                 ImageItem.ResourceImage(android.R.drawable.ic_menu_camera)
-        adapter = ImageAdapter(imagesItems.toMutableList())
-        recyclerViewImages.adapter = adapter
+        imageAdapter = ImageAdapter(imagesItems.toMutableList())
+        recyclerViewImages.adapter = imageAdapter
     }
 
     private fun SetupFilesRecycler() {
-
         val all = storageRef.child(qrNote!!.documentId!!).listAll()
         all.addOnSuccessListener { listResult ->
             run {
@@ -215,8 +214,7 @@ class SecondFragment : Fragment() {
                 recyclerViewFiles.layoutManager =
                     LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
                 // Create and set the adapter
-               // val imagesItems = pictures +                        ImageItem.ResourceImage(R.drawable.plus_sign)
-
+                // val imagesItems = pictures +                        ImageItem.ResourceImage(R.drawable.plus_sign)
 
                 val stringList =
                     listOf("String 1", "String 2", "String 3", "String 4", "String 5", "String 6")
@@ -226,6 +224,15 @@ class SecondFragment : Fragment() {
 
                 // Set the layout manager
                 recyclerViewFiles.layoutManager = LinearLayoutManager(requireContext())
+
+                stringAdapter.onItemClick = { stringItem ->
+                    Toast.makeText(
+                        requireContext(),
+                        "String clicked: " + stringItem,
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                }
             }
         }
     }
@@ -366,8 +373,8 @@ class SecondFragment : Fragment() {
         intent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
         if (intent.resolveActivity(requireActivity().packageManager) != null) {
             startActivityForResult(intent, REQUEST_CODE_CAMERA)
-            adapter.imageItems.add(0, ImageItem.FileImage(photoFile!!))
-            adapter.notifyItemInserted(0)
+            imageAdapter.imageItems.add(0, ImageItem.FileImage(photoFile!!))
+            imageAdapter.notifyItemInserted(0)
         } else {
             Snackbar.make(requireView(), "No camera app found", Snackbar.LENGTH_SHORT).show()
         }
