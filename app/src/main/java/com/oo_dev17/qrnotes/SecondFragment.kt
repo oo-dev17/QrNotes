@@ -46,7 +46,7 @@ import java.io.File
 class SecondFragment : Fragment() {
 
     private lateinit var imageAdapter: ImageAdapter
-    private lateinit var stringAdapter: StringAdapter
+    private lateinit var stringAdapter: DocumentAdapter
     private var qrNote: QrNote? = null
     private var _binding: FragmentSecondBinding? = null
 
@@ -219,7 +219,7 @@ class SecondFragment : Fragment() {
                 val stringList =
                     listOf("String 1", "String 2", "String 3", "String 4", "String 5", "String 6")
                 // Create and set the adapter
-                val stringAdapter = StringAdapter(stringList)
+                val stringAdapter = DocumentAdapter(stringList)
                 recyclerViewFiles.adapter = stringAdapter
 
                 // Set the layout manager

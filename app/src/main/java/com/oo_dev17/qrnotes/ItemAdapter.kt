@@ -25,7 +25,7 @@ class ItemAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemViewHolder {
-         itemView =
+        itemView =
             LayoutInflater.from(parent.context).inflate(R.layout.item_layout, parent, false)
 
         return ItemViewHolder(itemView!!)
@@ -36,7 +36,7 @@ class ItemAdapter(
         holder.titleTextView.text = qrNote.title
         //holder.descriptionTextView.text = String.format("%20.20s", qrNote.content)
         holder.uidTextView.text = qrNote.documentId
-     holder.qrCodeTextView.text= qrNote.qrCode
+        holder.qrCodeTextView.text = qrNote.qrCode
 
         // Set the click listener on the item view
         holder.itemView.setOnClickListener {
