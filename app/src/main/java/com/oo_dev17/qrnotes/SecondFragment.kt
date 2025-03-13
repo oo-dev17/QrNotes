@@ -105,6 +105,9 @@ class SecondFragment : Fragment() {
                 binding.qrCode.text = qrNote!!.qrCode
             }
         }
+        binding.fabAddDoc.setOnClickListener { _ ->
+            addDocument()
+        }
         // If the edit text contains previous text with potential links
         Linkify.addLinks(textviewSecond, Linkify.WEB_URLS)
         try {
@@ -216,8 +219,8 @@ class SecondFragment : Fragment() {
                 // Create and set the adapter
                 // val imagesItems = pictures +                        ImageItem.ResourceImage(R.drawable.plus_sign)
 
-                val stringList =
-                    listOf("String 1", "String 2", "String 3", "String 4", "String 5", "String 6")
+                val stringList = files
+                    //listOf("Sadasdada.pdf", "adsadasdsadas.txt", "dojaspoidmasdoisam.doc")
                 // Create and set the adapter
                 val stringAdapter = DocumentAdapter(stringList)
                 recyclerViewFiles.adapter = stringAdapter

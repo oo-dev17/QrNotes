@@ -45,10 +45,10 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
     ): View {
         _binding = FragmentFirstBinding.inflate(inflater, container, false)
         checkStoragePermission()
-        binding.fab.setOnClickListener { view ->
+        binding.fab.setOnClickListener { _ ->
             showTitleInputDialog()
         }
-        binding.fabQr.setOnClickListener { view ->
+        binding.fabQr.setOnClickListener { _ ->
             launchQRCodeScanner1()
         }
         return binding.root

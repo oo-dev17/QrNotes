@@ -18,6 +18,7 @@ class DocumentAdapter(private val stringList: List<String>) :
     override fun onBindViewHolder(holder: DocumentViewHolder, position: Int) {
         val stringEntry = stringList[position]
         holder.stringTextView.text = stringEntry
+        holder.logoTextView.text = stringEntry.substring(stringEntry.length -3, stringEntry.length).uppercase()
 
         // Set click listener for the item
         holder.itemView.setOnClickListener {
