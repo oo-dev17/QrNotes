@@ -4,6 +4,7 @@ import FullscreenImageDialog
 import ImageAdapter
 import android.Manifest
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -153,7 +154,6 @@ class SecondFragment : Fragment() {
                     }
                 }
             }
-
         } catch (e: Exception) {
             Log.e("Firestore", "Error getting QrNotes", e)
         }
@@ -220,7 +220,7 @@ class SecondFragment : Fragment() {
                 // val imagesItems = pictures +                        ImageItem.ResourceImage(R.drawable.plus_sign)
 
                 val stringList = files
-                    //listOf("Sadasdada.pdf", "adsadasdsadas.txt", "dojaspoidmasdoisam.doc")
+                //listOf("Sadasdada.pdf", "adsadasdsadas.txt", "dojaspoidmasdoisam.doc")
                 // Create and set the adapter
                 val stringAdapter = DocumentAdapter(stringList)
                 recyclerViewFiles.adapter = stringAdapter
@@ -229,14 +229,56 @@ class SecondFragment : Fragment() {
                 recyclerViewFiles.layoutManager = LinearLayoutManager(requireContext())
 
                 stringAdapter.onItemClick = { stringItem ->
+
                     Toast.makeText(
                         requireContext(),
                         "String clicked: " + stringItem,
                         Toast.LENGTH_SHORT
                     ).show()
-
+                    val fileName = FileCache().getPathForFileFromCache(
+                        requireContext(),
+                        qrNote?.documentId!!,
+                        stringItem
+                    )
+                    if (fileName != null) openFileWithAssociatedApp(fileName!!, requireContext())
                 }
             }
+        }
+    }
+
+    private fun openFileWithAssociatedApp(file: File, context: Context) {
+        if (!file.exists()) {
+            Log.e("OpenFile", "File does not exist: ${file.absolutePath}")
+            return
+        }
+
+        val fileUri: Uri = FileProvider.getUriForFile(
+            context, "${context.packageName}.fileprovider", file
+        )
+
+        val mimeType = getMimeType(file)
+
+        val intent = Intent(Intent.ACTION_VIEW)
+        intent.setDataAndType(fileUri, mimeType)
+        intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+
+        try {
+            context.startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            Log.e("OpenFile", "No application found to handle the file type", e)
+        }
+    }
+
+    private fun getMimeType(file: File): String {
+        // Basic MIME type detection (can be improved)
+        return when {
+            file.name.endsWith(".pdf") -> "application/pdf"
+            file.name.endsWith(".jpg") || file.name.endsWith(".jpeg") -> "image/jpeg"
+            file.name.endsWith(".png") -> "image/png"
+            file.name.endsWith(".txt") -> "text/plain"
+            file.name.endsWith(".doc") || file.name.endsWith(".docx") -> "application/msword"
+            // Add more cases as needed
+            else -> "application/octet-stream" // Default fallback
         }
     }
 
@@ -430,6 +472,8 @@ class SecondFragment : Fragment() {
                 val fileName = cursor?.getString(cursor.getColumnIndexOrThrow("_display_name"))
                 cursor?.close()
 
+                val fileCache = FileCache()
+                fileCache.storeFileInCache(requireContext(), qrNote?.documentId!!, fileName!!, uri)
                 val pdfFileRef = storageRef.child(qrNote!!.documentId + "/" + fileName)
                 val uploadTask = pdfFileRef.putFile(uri)
                 uploadTask.addOnFailureListener { exception ->
