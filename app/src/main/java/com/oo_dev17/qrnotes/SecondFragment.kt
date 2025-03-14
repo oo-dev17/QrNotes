@@ -4,7 +4,6 @@ import FullscreenImageDialog
 import ImageAdapter
 import android.Manifest
 import android.app.Activity
-import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -13,7 +12,6 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.text.Editable
 import android.text.util.Linkify
@@ -107,7 +105,7 @@ class SecondFragment : Fragment() {
             }
         }
         binding.fabAddDoc.setOnClickListener { _ ->
-            addDocument()
+           OpenFile(this).selectFile(Uri.EMPTY)
         }
         // If the edit text contains previous text with potential links
         Linkify.addLinks(textviewSecond, Linkify.WEB_URLS)
@@ -147,9 +145,6 @@ class SecondFragment : Fragment() {
                         } else if (imageItem.resId == android.R.drawable.ic_menu_camera) {
                             // Check camera permission and open the camera
                             checkCameraPermission()
-                        } else if (imageItem.resId == android.R.drawable.ic_menu_gallery) {
-                            // Check camera permission and open the camera
-                            addDocument()
                         }
                     }
                 }
@@ -192,7 +187,6 @@ class SecondFragment : Fragment() {
         // Create and set the adapter
         val imagesItems = pictures +
                 ImageItem.ResourceImage(R.drawable.plus_sign) +
-                ImageItem.ResourceImage(android.R.drawable.ic_menu_gallery) +
                 ImageItem.ResourceImage(android.R.drawable.ic_menu_camera)
         imageAdapter = ImageAdapter(imagesItems.toMutableList())
         recyclerViewImages.adapter = imageAdapter
@@ -240,69 +234,13 @@ class SecondFragment : Fragment() {
                         qrNote?.documentId!!,
                         stringItem
                     )
-                    if (fileName != null) openFileWithAssociatedApp(fileName!!, requireContext())
+                    if (fileName != null) OpenFile(this).openFileWithAssociatedApp(fileName!!, requireContext() )
                 }
             }
         }
     }
 
-    private fun openFileWithAssociatedApp(file: File, context: Context) {
-        if (!file.exists()) {
-            Log.e("OpenFile", "File does not exist: ${file.absolutePath}")
-            return
-        }
 
-        val fileUri: Uri = FileProvider.getUriForFile(
-            context, "${context.packageName}.fileprovider", file
-        )
-
-        val mimeType = getMimeType(file)
-
-        val intent = Intent(Intent.ACTION_VIEW)
-        intent.setDataAndType(fileUri, mimeType)
-        intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
-
-        try {
-            context.startActivity(intent)
-        } catch (e: ActivityNotFoundException) {
-            Log.e("OpenFile", "No application found to handle the file type", e)
-        }
-    }
-
-    private fun getMimeType(file: File): String {
-        // Basic MIME type detection (can be improved)
-        return when {
-            file.name.endsWith(".pdf") -> "application/pdf"
-            file.name.endsWith(".jpg") || file.name.endsWith(".jpeg") -> "image/jpeg"
-            file.name.endsWith(".png") -> "image/png"
-            file.name.endsWith(".txt") -> "text/plain"
-            file.name.endsWith(".doc") || file.name.endsWith(".docx") -> "application/msword"
-            // Add more cases as needed
-            else -> "application/octet-stream" // Default fallback
-        }
-    }
-
-    val REQUEST_CODE_PICK_FILE = 1
-
-    private fun addDocument() {
-        openFile(Uri.EMPTY)
-    }
-
-    // Request code for selecting a PDF document.
-    val PICK_PDF_FILE = 2
-
-    fun openFile(pickerInitialUri: Uri) {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = "application/pdf"
-
-            // Optionally, specify a URI for the file that should appear in the
-            // system file picker when it loads.
-            putExtra(DocumentsContract.EXTRA_INITIAL_URI, pickerInitialUri)
-        }
-
-        startActivityForResult(intent, PICK_PDF_FILE)
-    }
 
     private var photoFile: File? = null
     private fun createImageFile(): File {
@@ -464,7 +402,7 @@ class SecondFragment : Fragment() {
                 scanFile(imageFile)
             }
         }
-        if (requestCode == PICK_PDF_FILE && resultCode == Activity.RESULT_OK) {
+        if (requestCode == REQUEST_CODE_PICK_PDF_FILE && resultCode == Activity.RESULT_OK) {
             val uri = data?.data // This is the selected file's URI
             if (uri != null && qrNote != null) {
                 val cursor = requireContext().contentResolver.query(uri, null, null, null, null)
@@ -602,5 +540,10 @@ class SecondFragment : Fragment() {
         Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
             .update("content", _binding!!.textviewSecond.text.toString())
         var textSaved = true
+    }
+    companion object {
+        const val REQUEST_CODE_PICK_FILE = 1
+        // Request code for selecting a PDF document.
+        const val REQUEST_CODE_PICK_PDF_FILE = 2
     }
 }
