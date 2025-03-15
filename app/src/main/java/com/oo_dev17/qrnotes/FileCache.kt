@@ -6,10 +6,9 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
-class FileCache {
+class FileCache(val context: Context) {
 
     fun storeFileInCache(
-        context: Context,
         category: String,
         fileName: String,
         fileContent: ByteArray
@@ -32,7 +31,7 @@ class FileCache {
         }
     }
 
-    fun storeFileInCache(context: Context, category: String, fileName: String, fileUri: Uri) {
+    fun storeFileInCache(category: String, fileName: String, fileUri: Uri) {
         val categoryDir = File(context.cacheDir, category)
         if (!categoryDir.exists()) {
             categoryDir.mkdirs()
@@ -50,7 +49,7 @@ class FileCache {
         }
     }
 
-    fun getFileFromCache(context: Context, category: String, fileName: String): ByteArray? {
+    fun getFileFromCache(category: String, fileName: String): ByteArray? {
         // Get the cache directory and the subfolder for the category
         val categoryDir = File(context.cacheDir, category)
         val cacheFile = File(categoryDir, fileName)
@@ -67,26 +66,28 @@ class FileCache {
         return null // File doesn't exist or an error occurred
     }
 
-    fun getPathForFileFromCache(context: Context, category: String, fileName: String): File? {
+    fun getPathForFileFromCache(category: String, fileName: String): Pair<File, Boolean> {
         val categoryDir = File(context.cacheDir, category)
-        val cacheFile = File(categoryDir, fileName)
-        return if (cacheFile.exists()) {
-            cacheFile
-        } else {
-            null
+        if (!categoryDir.exists()) {
+            categoryDir.mkdirs()
         }
+        val cacheFile = File(categoryDir, fileName)
+        val exists = cacheFile.exists()
+        if (!exists) {
+            cacheFile.createNewFile()
+        }
+        return Pair(cacheFile, exists)
     }
 
-    fun clearCache(context: Context) {
+    fun clearCache() {
         val cacheDir = context.cacheDir
         cacheDir.deleteRecursively()
     }
 
-    fun checkIfFileExists(context: Context, category: String, fileName: String): Boolean {
+    fun FileExists(category: String, fileName: String): Boolean {
         // Get the cache directory and the subfolder for the category
         val categoryDir = File(context.cacheDir, category)
         val cacheFile = File(categoryDir, fileName)
-
         return cacheFile.exists()
     }
 }

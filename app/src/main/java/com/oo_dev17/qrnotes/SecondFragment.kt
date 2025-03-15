@@ -105,7 +105,7 @@ class SecondFragment : Fragment() {
             }
         }
         binding.fabAddDoc.setOnClickListener { _ ->
-           OpenFile(this).selectFile(Uri.EMPTY)
+            OpenFile(this).selectFile(Uri.EMPTY)
         }
         // If the edit text contains previous text with potential links
         Linkify.addLinks(textviewSecond, Linkify.WEB_URLS)
@@ -222,25 +222,33 @@ class SecondFragment : Fragment() {
                 // Set the layout manager
                 recyclerViewFiles.layoutManager = LinearLayoutManager(requireContext())
 
-                stringAdapter.onItemClick = { stringItem ->
-
-                    Toast.makeText(
-                        requireContext(),
-                        "String clicked: " + stringItem,
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    val fileName = FileCache().getPathForFileFromCache(
-                        requireContext(),
+                stringAdapter.onItemClick = { fileName ->
+                    val fileCache = FileCache(requireContext())
+                    // either for using a cached file or for downloading to it
+                    val (localFile, exists) = fileCache.getPathForFileFromCache(
                         qrNote?.documentId!!,
-                        stringItem
+                        fileName
                     )
-                    if (fileName != null) OpenFile(this).openFileWithAssociatedApp(fileName!!, requireContext() )
+
+                    if (exists) {
+                        OpenFile(this).openFileWithAssociatedApp(localFile, requireContext())
+                    } else {
+                        val downloadRef = storageRef.child(qrNote!!.documentId!!).child(fileName)
+                        downloadRef.getFile(localFile).addOnSuccessListener {
+                            // Local temp file has been created
+                            OpenFile(this).openFileWithAssociatedApp(localFile!!, requireContext())
+                        }.addOnFailureListener { fail ->
+                            Toast.makeText(
+                                requireContext(),
+                                "Download failed: " + fail.message,
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
                 }
             }
         }
     }
-
-
 
     private var photoFile: File? = null
     private fun createImageFile(): File {
@@ -410,8 +418,8 @@ class SecondFragment : Fragment() {
                 val fileName = cursor?.getString(cursor.getColumnIndexOrThrow("_display_name"))
                 cursor?.close()
 
-                val fileCache = FileCache()
-                fileCache.storeFileInCache(requireContext(), qrNote?.documentId!!, fileName!!, uri)
+                val fileCache = FileCache(requireContext())
+                fileCache.storeFileInCache(qrNote?.documentId!!, fileName!!, uri)
                 val pdfFileRef = storageRef.child(qrNote!!.documentId + "/" + fileName)
                 val uploadTask = pdfFileRef.putFile(uri)
                 uploadTask.addOnFailureListener { exception ->
@@ -541,8 +549,10 @@ class SecondFragment : Fragment() {
             .update("content", _binding!!.textviewSecond.text.toString())
         var textSaved = true
     }
+
     companion object {
         const val REQUEST_CODE_PICK_FILE = 1
+
         // Request code for selecting a PDF document.
         const val REQUEST_CODE_PICK_PDF_FILE = 2
     }

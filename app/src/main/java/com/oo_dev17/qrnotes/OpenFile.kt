@@ -6,35 +6,48 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import java.io.File
 
 class OpenFile {
-    constructor(secondFragment: SecondFragment)
-    {
-        this.secondFragment=secondFragment
+    constructor(secondFragment: SecondFragment) {
+        this.secondFragment = secondFragment
     }
-     fun openFileWithAssociatedApp(file: File, context: Context) {
-         secondFragment=secondFragment
+
+    fun openFileWithAssociatedApp(file: File, context: Context) {
+        secondFragment = secondFragment
         if (!file.exists()) {
             Log.e("OpenFile", "File does not exist: ${file.absolutePath}")
             return
         }
-
-        val fileUri: Uri = FileProvider.getUriForFile(
-            context, "${context.packageName}.fileprovider", file
-        )
-
-        val mimeType = getMimeType(file)
-
-        val intent = Intent(Intent.ACTION_VIEW)
-        intent.setDataAndType(fileUri, mimeType)
-        intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
-
         try {
-            context.startActivity(intent)
-        } catch (e: ActivityNotFoundException) {
-            Log.e("OpenFile", "No application found to handle the file type", e)
+            val fileUri: Uri =
+                FileProvider.getUriForFile(
+                    context, "${context.packageName}.fileprovider", file
+                )
+
+            val mimeType = getMimeType(file)
+
+            val intent = Intent(Intent.ACTION_VIEW)
+            intent.setDataAndType(fileUri, mimeType)
+            intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+
+            try {
+                context.startActivity(intent)
+            } catch (e: ActivityNotFoundException) {
+                Log.e("OpenFile", "No application found to handle the file type", e)
+                Toast.makeText(
+                    secondFragment.requireContext(),
+                    "No application found to handle the file type: " + e.message,
+                    Toast.LENGTH_SHORT)
+            }
+        } catch (e: Exception) {
+            Toast.makeText(
+                secondFragment.requireContext(),
+                "String clicked: " + e.message,
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -65,6 +78,4 @@ class OpenFile {
 
         secondFragment.startActivityForResult(intent, SecondFragment.REQUEST_CODE_PICK_PDF_FILE)
     }
-
-
 }
