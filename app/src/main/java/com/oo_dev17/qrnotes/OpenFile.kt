@@ -6,8 +6,8 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
-import android.widget.Toast
 import androidx.core.content.FileProvider
+import com.google.android.material.snackbar.Snackbar
 import java.io.File
 
 class OpenFile {
@@ -16,7 +16,6 @@ class OpenFile {
     }
 
     fun openFileWithAssociatedApp(file: File, context: Context) {
-        secondFragment = secondFragment
         if (!file.exists()) {
             Log.e("OpenFile", "File does not exist: ${file.absolutePath}")
             return
@@ -37,17 +36,12 @@ class OpenFile {
                 context.startActivity(intent)
             } catch (e: ActivityNotFoundException) {
                 Log.e("OpenFile", "No application found to handle the file type", e)
-                Toast.makeText(
-                    secondFragment.requireContext(),
+                Snackbar.make(secondFragment.requireView(),
                     "No application found to handle the file type: " + e.message,
-                    Toast.LENGTH_SHORT)
+                    Snackbar.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
-            Toast.makeText(
-                secondFragment.requireContext(),
-                "String clicked: " + e.message,
-                Toast.LENGTH_SHORT
-            ).show()
+            Snackbar.make(secondFragment.requireView(),"Error opening file: ${e.message}", Snackbar.LENGTH_SHORT).show()
         }
     }
 
@@ -66,7 +60,7 @@ class OpenFile {
 
     private lateinit var secondFragment: SecondFragment
 
-    fun selectFile(pickerInitialUri: Uri) {
+    fun selectDocToAdd(pickerInitialUri: Uri)  {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "application/pdf"

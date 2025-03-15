@@ -4,10 +4,11 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 
-class DocumentAdapter(private val stringList: List<String>) :
+class DocumentAdapter( val stringList: MutableList<String>) :
     RecyclerView.Adapter<DocumentViewHolder>() {
 
     var onItemClick: ((String) -> Unit)? = null
+    var onItemLongClick: ((String, Int) -> Unit)? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DocumentViewHolder {
         val documentView =
@@ -23,6 +24,10 @@ class DocumentAdapter(private val stringList: List<String>) :
         // Set click listener for the item
         holder.itemView.setOnClickListener {
             onItemClick?.invoke(stringEntry)
+        }
+        holder.itemView.setOnLongClickListener {
+            onItemLongClick?.invoke(stringEntry, position)
+            true
         }
     }
 

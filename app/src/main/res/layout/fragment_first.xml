@@ -64,6 +64,7 @@
         android:layout_marginEnd="50dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:maxImageSize="34dp"
         android:layout_marginBottom="0dp"
         app:srcCompat="@android:drawable/ic_input_add"
         tools:ignore="SpeakableTextPresentCheck" />
@@ -75,6 +76,7 @@
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="130dp"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:maxImageSize="34dp"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginBottom="0dp"
         app:srcCompat="?attr/actionModeSelectAllDrawable"

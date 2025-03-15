@@ -105,13 +105,12 @@ class SecondFragment : Fragment() {
             }
         }
         binding.fabAddDoc.setOnClickListener { _ ->
-            OpenFile(this).selectFile(Uri.EMPTY)
+            OpenFile(this).selectDocToAdd(Uri.EMPTY)
         }
         // If the edit text contains previous text with potential links
         Linkify.addLinks(textviewSecond, Linkify.WEB_URLS)
         try {
             checkStoragePermission(false)
-
             SetupImagesRecycler()
             SetupFilesRecycler()
 
@@ -196,26 +195,13 @@ class SecondFragment : Fragment() {
         val all = storageRef.child(qrNote!!.documentId!!).listAll()
         all.addOnSuccessListener { listResult ->
             run {
-                val files = listResult.items.map { it.name }
-                _binding!!.recyclerViewFiles.post {
-                    Snackbar.make(
-                        requireView(),
-                        "Number of files: ${files.size}",
-                        Snackbar.LENGTH_SHORT
-                    )
-                }
-                // Get the RecyclerView for files
                 val recyclerViewFiles: RecyclerView = binding.recyclerViewFiles
 
                 // Set up the RecyclerView with a horizontal LinearLayoutManager
                 recyclerViewFiles.layoutManager =
                     LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
-                // Create and set the adapter
-                // val imagesItems = pictures +                        ImageItem.ResourceImage(R.drawable.plus_sign)
 
-                val stringList = files
-                //listOf("Sadasdada.pdf", "adsadasdsadas.txt", "dojaspoidmasdoisam.doc")
-                // Create and set the adapter
+                val stringList = listResult.items.map { it.name }.toMutableList()
                 val stringAdapter = DocumentAdapter(stringList)
                 recyclerViewFiles.adapter = stringAdapter
 
@@ -245,6 +231,29 @@ class SecondFragment : Fragment() {
                             ).show()
                         }
                     }
+                }
+                stringAdapter.onItemLongClick = { fileName, position ->
+                    val builder = android.app.AlertDialog.Builder(requireContext())
+                    builder.setTitle("QrNote Options")
+                        .setMessage("What do you want to do with doc ${fileName} ?")
+                        .setPositiveButton("Delete") { dialog, _ ->
+                            // Delete the document
+                            val fileCache = FileCache(requireContext())
+                            fileCache.deleteFileFromCache(qrNote?.documentId!!, fileName)
+                            try {
+                                storageRef.child(qrNote!!.documentId!!).child(fileName).delete()
+                                // remove file entry from ui
+                                stringList.removeAt(position)
+                                stringAdapter.notifyDataSetChanged()
+                            } catch (e: Exception) {
+                                Snackbar.make(requireView(), "Delete in cloud failed: " + e.message, Snackbar.LENGTH_SHORT).show()
+                            }
+                            dialog.dismiss()
+                        }
+                        .setNegativeButton("Cancel") { dialog, _ ->
+                            dialog.dismiss()
+                        }
+                        .show()
                 }
             }
         }
@@ -430,6 +439,8 @@ class SecondFragment : Fragment() {
                     ).show()
                 }.addOnSuccessListener { taskSnapshot ->
                     Toast.makeText(requireContext(), "Upload successful", Toast.LENGTH_SHORT).show()
+                    stringAdapter.stringList.add(fileName)
+                    stringAdapter.notifyDataSetChanged()
                 }
             }
         }

@@ -2,6 +2,7 @@ package com.oo_dev17.qrnotes
 
 import android.content.Context
 import android.net.Uri
+import com.google.android.material.snackbar.Snackbar
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -89,5 +90,15 @@ class FileCache(val context: Context) {
         val categoryDir = File(context.cacheDir, category)
         val cacheFile = File(categoryDir, fileName)
         return cacheFile.exists()
+    }
+
+    fun deleteFileFromCache(documentId: String, fileName: String) {
+        val categoryDir = File(context.cacheDir, documentId)
+        val cacheFile = File(categoryDir, fileName)
+        try {
+            cacheFile.delete()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }
