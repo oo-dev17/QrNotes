@@ -12,6 +12,7 @@ data class QrNote(
     val qrCode: String = "",
     var documentId: String? = null
 ) : Parcelable {
+        
 
     // Constructor to create a QrNote from a Parcel
     constructor(parcel: Parcel) : this(
@@ -21,6 +22,11 @@ data class QrNote(
         parcel.readString()!!,
         parcel.readString()!!
     )
+
+    lateinit var allDocuments: List<String>
+    val fileNames: List<String> =
+        getImageFiles().first.map { it.name }
+        
 
     // Describe the kinds of special objects contained in this Parcelable instance's marshaled representation.
     override fun describeContents(): Int {

@@ -105,7 +105,10 @@ class SecondFragment : Fragment() {
             }
         }
         binding.fabAddDoc.setOnClickListener { _ ->
-            OpenFile(this).selectDocToAdd(Uri.EMPTY)
+            OpenFile(this).selectDocToAdd(Uri.EMPTY, true)
+        }
+        binding.fabAddPdf.setOnClickListener { _ ->
+            OpenFile(this).selectDocToAdd(Uri.EMPTY , false)
         }
         // If the edit text contains previous text with potential links
         Linkify.addLinks(textviewSecond, Linkify.WEB_URLS)
@@ -192,9 +195,10 @@ class SecondFragment : Fragment() {
     }
 
     private fun SetupFilesRecycler() {
-        val all = storageRef.child(qrNote!!.documentId!!).listAll()
-        all.addOnSuccessListener { listResult ->
+        val allDocumentReferences = storageRef.child(qrNote!!.documentId!!).listAll()
+        allDocumentReferences.addOnSuccessListener { listResult ->
             run {
+                qrNote!!.allDocuments = listResult.items.map { it.name }
                 val recyclerViewFiles: RecyclerView = binding.recyclerViewFiles
 
                 // Set up the RecyclerView with a horizontal LinearLayoutManager
@@ -419,7 +423,7 @@ class SecondFragment : Fragment() {
                 scanFile(imageFile)
             }
         }
-        if (requestCode == REQUEST_CODE_PICK_PDF_FILE && resultCode == Activity.RESULT_OK) {
+        if (requestCode == REQUEST_CODE_PICK_DOCUMENT && resultCode == Activity.RESULT_OK) {
             val uri = data?.data // This is the selected file's URI
             if (uri != null && qrNote != null) {
                 val cursor = requireContext().contentResolver.query(uri, null, null, null, null)
@@ -429,8 +433,8 @@ class SecondFragment : Fragment() {
 
                 val fileCache = FileCache(requireContext())
                 fileCache.storeFileInCache(qrNote?.documentId!!, fileName!!, uri)
-                val pdfFileRef = storageRef.child(qrNote!!.documentId + "/" + fileName)
-                val uploadTask = pdfFileRef.putFile(uri)
+                val documentRef = storageRef.child(qrNote!!.documentId + "/" + fileName)
+                val uploadTask = documentRef.putFile(uri)
                 uploadTask.addOnFailureListener { exception ->
                     Toast.makeText(
                         requireContext(),
@@ -565,6 +569,6 @@ class SecondFragment : Fragment() {
         const val REQUEST_CODE_PICK_FILE = 1
 
         // Request code for selecting a PDF document.
-        const val REQUEST_CODE_PICK_PDF_FILE = 2
+        const val REQUEST_CODE_PICK_DOCUMENT = 2
     }
 }

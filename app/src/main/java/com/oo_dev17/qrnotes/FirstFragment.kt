@@ -156,7 +156,11 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             try {
                 val note = qrNotes.firstOrNull() { note -> note.qrCode == scannedData }
                 if (note == null) {
-                    Toast.makeText(requireContext(), "QR code not found: $scannedData", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        requireContext(),
+                        "QR code not found: $scannedData",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     return@registerForActivityResult
                 }
                 val bundle = Bundle()
@@ -165,7 +169,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             } catch (e: Exception) {
                 Toast.makeText(requireContext(), "QR code not found", Toast.LENGTH_SHORT).show()
             }
-            }
+        }
 
     }
 
@@ -224,7 +228,10 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         return qrNotes.filter { qrNote ->
             qrNote.title?.contains(query, ignoreCase = true) == true ||
                     qrNote.content?.contains(query, ignoreCase = true) == true ||
-                    qrNote.documentId?.contains(query, ignoreCase = true) == true
+                    qrNote.documentId?.contains(
+                        query,
+                        ignoreCase = true
+                    ) == true || qrNote.allDocuments.any({ it.contains(query, ignoreCase = true) })
         }
     }
 

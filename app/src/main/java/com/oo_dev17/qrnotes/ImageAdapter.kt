@@ -1,7 +1,9 @@
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.LinearLayout
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.oo_dev17.qrnotes.ImageItem
@@ -33,6 +35,15 @@ class ImageAdapter(public val imageItems: MutableList<ImageItem>) :
             is ImageItem.ResourceImage -> {
                 // Load image from resource ID
                 holder.imageView.setImageResource(imageItem.resId)
+                val layoutParams = LinearLayout.LayoutParams(
+                    128,
+                    128
+                )
+                // Center the image
+                layoutParams.gravity = Gravity.CENTER
+                holder.imageView.layoutParams = layoutParams
+                // Set scale type to centerInside to avoid stretching
+                holder.imageView.scaleType = ImageView.ScaleType.CENTER_INSIDE
             }
     }
 

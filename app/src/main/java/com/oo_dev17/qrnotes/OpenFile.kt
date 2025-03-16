@@ -36,12 +36,18 @@ class OpenFile {
                 context.startActivity(intent)
             } catch (e: ActivityNotFoundException) {
                 Log.e("OpenFile", "No application found to handle the file type", e)
-                Snackbar.make(secondFragment.requireView(),
+                Snackbar.make(
+                    secondFragment.requireView(),
                     "No application found to handle the file type: " + e.message,
-                    Snackbar.LENGTH_SHORT).show()
+                    Snackbar.LENGTH_SHORT
+                ).show()
             }
         } catch (e: Exception) {
-            Snackbar.make(secondFragment.requireView(),"Error opening file: ${e.message}", Snackbar.LENGTH_SHORT).show()
+            Snackbar.make(
+                secondFragment.requireView(),
+                "Error opening file: ${e.message}",
+                Snackbar.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -60,16 +66,28 @@ class OpenFile {
 
     private lateinit var secondFragment: SecondFragment
 
-    fun selectDocToAdd(pickerInitialUri: Uri)  {
+    fun selectDocToAdd(pickerInitialUri: Uri, allTypes: Boolean) {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            type = "application/pdf"
+            type = if (allTypes) "*/*" else "application/pdf"
 
             // Optionally, specify a URI for the file that should appear in the
             // system file picker when it loads.
-            putExtra(DocumentsContract.EXTRA_INITIAL_URI, pickerInitialUri)
+            if (allTypes)
+                putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
+            else
+                putExtra(DocumentsContract.EXTRA_INITIAL_URI, pickerInitialUri)
         }
 
-        secondFragment.startActivityForResult(intent, SecondFragment.REQUEST_CODE_PICK_PDF_FILE)
+        secondFragment.startActivityForResult(intent, SecondFragment.REQUEST_CODE_PICK_DOCUMENT)
     }
+
+    val mimeTypes = arrayOf(
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "text/plain",
+        "application/msword", // .doc files
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" // .docx files
+    )
 }
