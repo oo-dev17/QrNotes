@@ -308,6 +308,8 @@ class SecondFragment : Fragment() {
             ActivityCompat.requestPermissions(
                 requireActivity(), arrayOf(permission), REQUEST_CODE_READ_EXTERNAL_STORAGE
             )
+            if (openGallery)
+                openGallery()
         } else {
             // Permission already granted, open the gallery
             if (openGallery)
@@ -328,6 +330,7 @@ class SecondFragment : Fragment() {
                 arrayOf(Manifest.permission.CAMERA),
                 REQUEST_CODE_CAMERA_PERMISSION
             )
+            openCamera()
         } else {
             // Permission already granted, open the camera
             openCamera()
