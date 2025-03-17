@@ -631,7 +631,7 @@ class SecondFragment : Fragment() {
             }
             builder.show()
         }
-        binding.buttonSecond.setOnClickListener {
+        binding.buttonScanQr.setOnClickListener {
             launchQRCodeScanner()
         }
     }

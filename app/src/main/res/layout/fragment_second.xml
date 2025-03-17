@@ -33,13 +33,15 @@
             tools:ignore="HardcodedText" />
 
         <Button
-            android:id="@+id/button_second"
+            android:id="@+id/button_scan_qr"
+            style="@style/Widget.AppCompat.Button"
             android:layout_width="64dp"
             android:layout_height="51dp"
             app:flow_horizontalAlign="end"
-            app:icon="?attr/actionModeSelectAllDrawable"
-            app:iconPadding="0dp"
+            app:icon="@drawable/qr_code"
 
+            app:iconPadding="0dp"
+            app:iconSize="24dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
