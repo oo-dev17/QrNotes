@@ -231,7 +231,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                     qrNote.documentId?.contains(
                         query,
                         ignoreCase = true
-                    ) == true || qrNote.allDocuments.any({ it.contains(query, ignoreCase = true) })
+                    ) == true //|| qrNote.allDocuments.any({ it.contains(query, ignoreCase = true) })
         }
     }
 

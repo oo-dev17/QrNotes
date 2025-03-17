@@ -44,6 +44,10 @@ class ImageAdapter(public val imageItems: MutableList<ImageItem>) :
                 holder.imageView.layoutParams = layoutParams
                 // Set scale type to centerInside to avoid stretching
                 holder.imageView.scaleType = ImageView.ScaleType.CENTER_INSIDE
+                holder.itemView.layoutParams = LinearLayout.LayoutParams(
+                    256,
+                    256
+                )
             }
     }
 
