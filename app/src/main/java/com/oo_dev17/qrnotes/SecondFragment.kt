@@ -52,8 +52,7 @@ class SecondFragment : Fragment() {
     private var _binding: FragmentSecondBinding? = null
 
     // Create a storage reference from our app
-    private val storage = Firebase.storage
-    private var storageRef = storage.reference
+    private val storageRef = Firebase.storage.reference
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -613,7 +612,6 @@ class SecondFragment : Fragment() {
             builder.setPositiveButton("Change") { dialog, _ ->
                 val title = input.text.toString()
                 if (title.isNotEmpty()) {
-
                     tileTextView.text = title
                     tileTextView.requestFocus()
                     Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)

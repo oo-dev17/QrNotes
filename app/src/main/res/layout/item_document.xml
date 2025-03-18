@@ -4,10 +4,11 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingVertical="0dp"
+    android:paddingVertical="6dp"
     android:clickable="false"
     android:focusable="true"
     android:paddingHorizontal="10dp">
+
 
     <TextView
         android:id="@+id/logoTextView"
@@ -28,7 +29,7 @@
         android:text="PDFPDFPDFPDFPDFPDF"
         android:paddingHorizontal="10dp"
         android:gravity="center_vertical"
-        android:textSize="18sp"
+        android:textSize="16sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/logoTextView"
         app:layout_constraintTop_toTopOf="parent" />
