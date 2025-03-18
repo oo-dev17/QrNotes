@@ -4,6 +4,8 @@ import FullscreenImageDialog
 import ImageAdapter
 import android.Manifest
 import android.app.Activity
+import android.content.ContentResolver
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -71,7 +73,7 @@ class SecondFragment : Fragment() {
 
     override fun onPause() {
         super.onPause()
-        SaveText()
+        saveText()
     }
 
     override fun onCreateView(
@@ -108,7 +110,7 @@ class SecondFragment : Fragment() {
             OpenFile(this).selectDocToAdd(Uri.EMPTY, true)
         }
         binding.fabAddPdf.setOnClickListener { _ ->
-            OpenFile(this).selectDocToAdd(Uri.EMPTY , false)
+            OpenFile(this).selectDocToAdd(Uri.EMPTY, false)
         }
         // If the edit text contains previous text with potential links
         Linkify.addLinks(textviewSecond, Linkify.WEB_URLS)
@@ -151,12 +153,92 @@ class SecondFragment : Fragment() {
                     }
                 }
             }
+            imageAdapter.onItemLongClick = { imageItem, position ->
+                when (imageItem) {
+                    is ImageItem.FileImage -> {
+                        val builder = android.app.AlertDialog.Builder(requireContext())
+                        builder.setTitle("QrNote Options")
+                            .setMessage("What do you want to do with img ${imageItem.file.name} ?")
+                            .setPositiveButton("Delete") { dialog, _ ->
+                                // Delete the document
+                                // val fileCache = FileCache(requireContext())
+                                // fileCache.deleteFileFromCache(qrNote?.documentId!!, fileName)
+                                try {
+                                    //storageRef.child(qrNote!!.documentId!!).child(fileName).delete()
+                                    // remove file entry from ui
+
+                                    imageAdapter.imageItems.removeAt(position)
+                                    imageAdapter.notifyItemRemoved(position)
+
+                                    val outputFile = File(qrNote!!.ImageSubfolder(), imageItem.file.name)
+                                    deleteImageFromDcim(requireContext(), findAndGetMediaStoreUri(requireContext(), outputFile)!!)
+
+                                } catch (e: Exception) {
+                                    Snackbar.make(
+                                        requireView(),
+                                        "Delete fail: " + e.message,
+                                        Snackbar.LENGTH_LONG
+                                    ).show()
+                                }
+                                dialog.dismiss()
+                            }
+                            .setNegativeButton("Cancel") { dialog, _ ->
+                                dialog.dismiss()
+                            }
+                            .show()
+                    }
+
+                    is ImageItem.ResourceImage -> {
+                    }
+                }
+            }
         } catch (e: Exception) {
             Log.e("Firestore", "Error getting QrNotes", e)
         }
 
-
         return binding.root
+    }
+
+    private fun deleteImageFromDcim(context: Context, imageUri: Uri) {
+        val contentResolver: ContentResolver = context.contentResolver
+
+        try {
+            // Delete using the Media Store URI
+            val rowsDeleted = contentResolver.delete(imageUri, null, null)
+
+            if (rowsDeleted > 0) {
+                println("Image deleted successfully.")
+            } else {
+                println("Image deletion failed or image not found.")
+            }
+        } catch (e: SecurityException) {
+            println("Permission error: " + e.message)
+        } catch (e: Exception){
+            println("Error deleting image: " + e.message)
+        }
+    }
+
+    fun findAndGetMediaStoreUri(context:Context, imageFile:File) : Uri?{
+        val projection = arrayOf(
+            MediaStore.Images.Media._ID,
+        )
+        val selection = "${MediaStore.Images.Media.DATA} = ?"
+        val selectionArgs = arrayOf(imageFile.absolutePath)
+
+        context.contentResolver.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            selection,
+            selectionArgs,
+            null
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+                val id = cursor.getLong(idColumn)
+                return ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+            }
+        }
+        return null
     }
 
     private fun SetupImagesRecycler() {
@@ -175,13 +257,6 @@ class SecondFragment : Fragment() {
         // Get the RecyclerView for images
         val recyclerViewImages: RecyclerView = binding.recyclerViewImages
         val pictures = images.map { ImageItem.FileImage(it) }
-        /*_binding!!.recyclerView.post {
-                Snackbar.make(
-                    requireView(),
-                    "Number of images: ${pictures.size}",
-                    Snackbar.LENGTH_SHORT
-                ).show()
-            }*/
 
         // Set up the RecyclerView with a horizontal LinearLayoutManager
         recyclerViewImages.layoutManager =
@@ -250,7 +325,11 @@ class SecondFragment : Fragment() {
                                 stringList.removeAt(position)
                                 stringAdapter.notifyDataSetChanged()
                             } catch (e: Exception) {
-                                Snackbar.make(requireView(), "Delete in cloud failed: " + e.message, Snackbar.LENGTH_SHORT).show()
+                                Snackbar.make(
+                                    requireView(),
+                                    "Delete in cloud failed: " + e.message,
+                                    Snackbar.LENGTH_SHORT
+                                ).show()
                             }
                             dialog.dismiss()
                         }
@@ -264,8 +343,8 @@ class SecondFragment : Fragment() {
     }
 
     private var photoFile: File? = null
-    private fun createImageFile(): File {
 
+    private fun createImageFile(): File {
         val subfolderDir = qrNote?.ImageSubfolder()
 
         if (subfolderDir == null) {
@@ -562,7 +641,7 @@ class SecondFragment : Fragment() {
         _binding = null
     }
 
-    fun SaveText() {
+    private fun saveText() {
         Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
             .update("content", _binding!!.textviewSecond.text.toString())
         var textSaved = true

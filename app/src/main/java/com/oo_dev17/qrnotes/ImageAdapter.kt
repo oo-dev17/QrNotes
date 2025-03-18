@@ -14,6 +14,7 @@ class ImageAdapter(public val imageItems: MutableList<ImageItem>) :
     RecyclerView.Adapter<ImageAdapter.ImageViewHolder>() {
 
     var onItemClick: ((ImageItem) -> Unit)? = null
+    var onItemLongClick: ((ImageItem, Int) -> Unit)? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ImageViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -49,13 +50,17 @@ class ImageAdapter(public val imageItems: MutableList<ImageItem>) :
                     256
                 )
             }
-    }
-
-            // Set click listener for the item
-            holder.itemView.setOnClickListener {
-                onItemClick?.invoke(imageItem)
-            }
         }
+
+        // Set click listener for the item
+        holder.itemView.setOnClickListener {
+            onItemClick?.invoke(imageItem)
+        }
+        holder.itemView.setOnLongClickListener {
+            onItemLongClick?.invoke(imageItem, position)
+            true
+        }
+    }
 
     override fun getItemCount(): Int {
         return imageItems.size
