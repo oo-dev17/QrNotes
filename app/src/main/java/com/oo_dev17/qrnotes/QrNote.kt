@@ -12,8 +12,6 @@ data class QrNote(
     val qrCode: String = "",
     var documentId: String? = null
 ) : Parcelable {
-        
-
     // Constructor to create a QrNote from a Parcel
     constructor(parcel: Parcel) : this(
         parcel.readString()!!,
@@ -22,6 +20,8 @@ data class QrNote(
         parcel.readString()!!,
         parcel.readString()!!
     )
+    constructor() : this("","", System.currentTimeMillis(), "")
+
 
     lateinit var allDocuments: List<String>
     val fileNames: List<String> =

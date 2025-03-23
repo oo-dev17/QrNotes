@@ -63,6 +63,9 @@ dependencies {
     implementation(platform(libs.firebase.bom.v3223)) // Or latest version
     implementation(libs.firebase.storage.ktx) //KTX version for Kotlin
     implementation(libs.googleid)
+    implementation(libs.play.services.base) // Base services
+    implementation(libs.play.services.basement) // Basement services
+    implementation(libs.firebase.messaging) // Example: Firebase Cloud Messaging
     implementation(libs.zxing.android.embedded)
     implementation(libs.firebase.storage)
     testImplementation(libs.junit)

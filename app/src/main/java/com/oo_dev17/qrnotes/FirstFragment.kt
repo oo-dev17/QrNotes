@@ -72,23 +72,27 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                 // Create a new QrNote object
                 val note = QrNote(title, "") // Empty content for now
 
-                sharedDb.collection("qrNotes").add(note).addOnSuccessListener { docRef ->
-                    Log.d("Firestore", "Note added with ID: ${docRef.id}")
-                    sharedDb.collection("qrNotes").document(docRef.id).update("id", docRef.id)
-                    note.documentId = docRef.id
+                try {
+                    sharedDb.collection("qrNotes").add(note).addOnSuccessListener { docRef ->
+                        Log.d("Firestore", "Note added with ID: ${docRef.id}")
+                        sharedDb.collection("qrNotes").document(docRef.id).update("id", docRef.id)
+                        note.documentId = docRef.id
 
-                    onNewQrNote(note)
-                    // Jump to second fragment
-                    val bundle = Bundle()
-                    // Put the QrNote into the Bundle
-                    bundle.putParcelable("qrNote", note)
-                    //  (requireActivity() as MainActivity).sharedQrNote = item
-                    // Navigate to SecondFragment with the Bundle
-                    val navController = findNavController()
-                    navController.navigate(R.id.action_FirstFragment_to_SecondFragment, bundle)
+                        onNewQrNote(note)
+                        // Jump to second fragment
+                        val bundle = Bundle()
+                        // Put the QrNote into the Bundle
+                        bundle.putParcelable("qrNote", note)
+                        //  (requireActivity() as MainActivity).sharedQrNote = item
+                        // Navigate to SecondFragment with the Bundle
+                        val navController = findNavController()
+                        navController.navigate(R.id.action_FirstFragment_to_SecondFragment, bundle)
 
-                }.addOnFailureListener { e ->
-                    Log.w("Firestore", "Error adding note", e)
+                    }.addOnFailureListener { e ->
+                        Log.w("Firestore", "Error adding note", e)
+                    }
+                } catch (e: Exception) {
+                    TODO("Not yet implemented")
                 }
             } else {
                 Toast.makeText(requireContext(), "Title cannot be empty", Toast.LENGTH_SHORT).show()
