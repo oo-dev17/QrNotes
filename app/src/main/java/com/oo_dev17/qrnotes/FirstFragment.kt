@@ -45,10 +45,10 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
     ): View {
         _binding = FragmentFirstBinding.inflate(inflater, container, false)
         checkStoragePermission()
-        binding.fab.setOnClickListener { _ ->
+        binding.fabNew.setOnClickListener { _ ->
             showTitleInputDialog()
         }
-        binding.fabQr.setOnClickListener { _ ->
+        binding.fabScanQr.setOnClickListener { _ ->
             launchQRCodeScanner1()
         }
         return binding.root
@@ -92,7 +92,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                         Log.w("Firestore", "Error adding note", e)
                     }
                 } catch (e: Exception) {
-                    TODO("Not yet implemented")
+                    var z = 4
                 }
             } else {
                 Toast.makeText(requireContext(), "Title cannot be empty", Toast.LENGTH_SHORT).show()
@@ -115,7 +115,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             Manifest.permission.READ_MEDIA_IMAGES
         } else {
             // Use READ_EXTERNAL_STORAGE for older versions
-            Manifest.permission.READ_EXTERNAL_STORAGE
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
         }
 
         if (ContextCompat.checkSelfPermission(

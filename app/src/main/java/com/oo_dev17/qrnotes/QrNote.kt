@@ -3,6 +3,7 @@ package com.oo_dev17.qrnotes
 import android.os.Environment
 import android.os.Parcel
 import android.os.Parcelable
+import com.google.firebase.firestore.Exclude
 import java.io.File
 
 data class QrNote(
@@ -11,6 +12,7 @@ data class QrNote(
     val creationDate: Long = System.currentTimeMillis(),
     val qrCode: String = "",
     var documentId: String? = null
+
 ) : Parcelable {
     // Constructor to create a QrNote from a Parcel
     constructor(parcel: Parcel) : this(
@@ -20,13 +22,19 @@ data class QrNote(
         parcel.readString()!!,
         parcel.readString()!!
     )
-    constructor() : this("","", System.currentTimeMillis(), "")
 
+    constructor() : this("", "", System.currentTimeMillis(), "")
 
+    @Exclude
+    @Transient
     lateinit var allDocuments: List<String>
+
+    init {
+        allDocuments = listOf("", "")
+    }
+
     val fileNames: List<String> =
-        getImageFiles().first.map { it.name }
-        
+        retrieveImageFiles().first.map { it.name }
 
     // Describe the kinds of special objects contained in this Parcelable instance's marshaled representation.
     override fun describeContents(): Int {
@@ -62,7 +70,7 @@ data class QrNote(
         return subfolderDir
     }
 
-    internal fun getImageFiles(): Pair<List<File>, String> {
+    internal fun retrieveImageFiles(): Pair<List<File>, String> {
         val subfolderPath = ImageSubfolder()?.absolutePath
         val subfolderDir = ImageSubfolder()
 

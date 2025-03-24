@@ -54,7 +54,7 @@ class ItemAdapter(
             true // Consume the long click event
         }
 
-        val firstPics = qrNote.getImageFiles().first
+        val firstPics = qrNote.retrieveImageFiles().first
         if (firstPics.isNotEmpty()) {
             // Load image using a library like Glide or Coil
             Glide.with(holder.itemView.context).load(firstPics.first())

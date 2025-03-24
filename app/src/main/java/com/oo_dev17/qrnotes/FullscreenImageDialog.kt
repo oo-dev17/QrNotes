@@ -8,7 +8,8 @@ import androidx.appcompat.app.AlertDialog
 import com.bumptech.glide.Glide // Use Glide for image loading
 import java.io.File
 
-class FullscreenImageDialog(context: Context, private val imageFile: File) : AlertDialog(context) {
+
+    class FullscreenImageDialog(context: Context, private val imageFile: File) : Dialog(context) {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

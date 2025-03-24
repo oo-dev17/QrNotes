@@ -122,14 +122,6 @@ class SecondFragment : Fragment() {
             imageAdapter.onItemClick = { imageItem ->
                 when (imageItem) {
                     is ImageItem.FileImage -> {
-                        _binding!!.recyclerViewImages.post {
-                            Snackbar.make(
-                                requireView(),
-                                "Image clicked: ${imageItem.file}",
-                                Snackbar.LENGTH_SHORT
-                            )
-                                .show()
-                        }
                         val dialog = FullscreenImageDialog(requireContext(), imageItem.file)
                         dialog.show()
                     }
@@ -169,9 +161,12 @@ class SecondFragment : Fragment() {
                                     imageAdapter.imageItems.removeAt(position)
                                     imageAdapter.notifyItemRemoved(position)
 
-                                    val outputFile = File(qrNote!!.ImageSubfolder(), imageItem.file.name)
-                                    deleteImageFromDcim(requireContext(), findAndGetMediaStoreUri(requireContext(), outputFile)!!)
-
+                                    val outputFile =
+                                        File(qrNote!!.ImageSubfolder(), imageItem.file.name)
+                                    deleteImageFromDcim(
+                                        requireContext(),
+                                        findAndGetMediaStoreUri(requireContext(), outputFile)!!
+                                    )
                                 } catch (e: Exception) {
                                     Snackbar.make(
                                         requireView(),
@@ -198,7 +193,7 @@ class SecondFragment : Fragment() {
         return binding.root
     }
 
-    private fun deleteImageFromDcim(context: Context, imageUri: Uri) {
+    private fun deleteImage(context: Context, imageUri: Uri) {
         val contentResolver: ContentResolver = context.contentResolver
 
         try {
@@ -212,12 +207,35 @@ class SecondFragment : Fragment() {
             }
         } catch (e: SecurityException) {
             println("Permission error: " + e.message)
-        } catch (e: Exception){
+        } catch (e: Exception) {
             println("Error deleting image: " + e.message)
         }
     }
+    private fun deleteImageFromDcim(context: Context, imageUri: Uri) {
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Use READ_MEDIA_IMAGES for Android 13 and above
+            Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            // Use READ_EXTERNAL_STORAGE for older versions
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        }
 
-    fun findAndGetMediaStoreUri(context:Context, imageFile:File) : Uri?{
+        if (ContextCompat.checkSelfPermission(
+                requireContext(), permission
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            // Request the permission
+            ActivityCompat.requestPermissions(
+                requireActivity(), arrayOf(permission), REQUEST_CODE_WRITE_EXTERNAL_STORAGE
+            )
+            deleteImage(context, imageUri)
+        } else {
+            // Permission already granted, open the gallery
+            deleteImage(context, imageUri)
+        }
+    }
+
+    fun findAndGetMediaStoreUri(context: Context, imageFile: File): Uri? {
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
         )
@@ -241,7 +259,7 @@ class SecondFragment : Fragment() {
     }
 
     private fun SetupImagesRecycler() {
-        var (images, error) = qrNote!!.getImageFiles()
+        var (images, error) = qrNote!!.retrieveImageFiles()
         if (error != "") {
             _binding!!.recyclerViewImages.post {
                 Snackbar.make(
@@ -367,15 +385,15 @@ class SecondFragment : Fragment() {
         }
     }
 
-    private val REQUEST_CODE_READ_EXTERNAL_STORAGE = 100
+    private val REQUEST_CODE_WRITE_EXTERNAL_STORAGE = 100
 
-    private fun checkStoragePermission(openGallery: Boolean) {
+    private fun checkStoragePermission(openGallery: Boolean, ) {
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // Use READ_MEDIA_IMAGES for Android 13 and above
             Manifest.permission.READ_MEDIA_IMAGES
         } else {
             // Use READ_EXTERNAL_STORAGE for older versions
-            Manifest.permission.READ_EXTERNAL_STORAGE
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
         }
 
         if (ContextCompat.checkSelfPermission(
@@ -384,7 +402,7 @@ class SecondFragment : Fragment() {
         ) {
             // Request the permission
             ActivityCompat.requestPermissions(
-                requireActivity(), arrayOf(permission), REQUEST_CODE_READ_EXTERNAL_STORAGE
+                requireActivity(), arrayOf(permission), REQUEST_CODE_WRITE_EXTERNAL_STORAGE
             )
             if (openGallery)
                 openGallery()
@@ -420,7 +438,7 @@ class SecondFragment : Fragment() {
         requestCode: Int, permissions: Array<String>, grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CODE_READ_EXTERNAL_STORAGE) {
+        if (requestCode == REQUEST_CODE_WRITE_EXTERNAL_STORAGE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // Permission granted, open the gallery
                 openGallery()
