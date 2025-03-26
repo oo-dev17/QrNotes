@@ -196,6 +196,7 @@ class SecondFragment : Fragment() {
     private fun deleteImage(context: Context, imageUri: Uri) {
         val contentResolver: ContentResolver = context.contentResolver
 
+            val file: File = File(java.lang.String.valueOf(imageUri))
         try {
             // Delete using the Media Store URI
             val rowsDeleted = contentResolver.delete(imageUri, null, null)
@@ -207,9 +208,21 @@ class SecondFragment : Fragment() {
             }
         } catch (e: SecurityException) {
             println("Permission error: " + e.message)
+            if (file.exists()) {
+                if (file.delete()) {
+                    println("Image deleted successfully.")
+                } else {
+                    println("Image deletion failed or image not found.")
+                }
+            }else{
+                println("Image not found.${file.absolutePath}")
+            }
+
+
         } catch (e: Exception) {
             println("Error deleting image: " + e.message)
         }
+        scanFileAfterDelete(file)
     }
     private fun deleteImageFromDcim(context: Context, imageUri: Uri) {
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -387,7 +400,7 @@ class SecondFragment : Fragment() {
 
     private val REQUEST_CODE_WRITE_EXTERNAL_STORAGE = 100
 
-    private fun checkStoragePermission(openGallery: Boolean, ) {
+    private fun checkStoragePermission(openGallery: Boolean) {
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // Use READ_MEDIA_IMAGES for Android 13 and above
             Manifest.permission.READ_MEDIA_IMAGES
@@ -486,6 +499,14 @@ class SecondFragment : Fragment() {
     private fun scanFile(file: File) {
         MediaScannerConnection.scanFile(
             requireContext(), arrayOf(file.absolutePath), null
+        ) { path, uri ->
+            // File has been scanned and added to the MediaStore
+            Log.d("MediaScan", "Scanned file: $path, URI: $uri")
+        }
+    }
+    private fun scanFileAfterDelete(file: File) {
+        MediaScannerConnection.scanFile(
+            requireContext(), arrayOf(file.parent), null
         ) { path, uri ->
             // File has been scanned and added to the MediaStore
             Log.d("MediaScan", "Scanned file: $path, URI: $uri")
