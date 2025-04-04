@@ -33,9 +33,6 @@ data class QrNote(
         allDocuments = listOf("", "")
     }
 
-    val fileNames: List<String> =
-        retrieveImageFiles().first.map { it.name }
-
     // Describe the kinds of special objects contained in this Parcelable instance's marshaled representation.
     override fun describeContents(): Int {
         return 0
@@ -70,7 +67,24 @@ data class QrNote(
         return subfolderDir
     }
 
-    internal fun retrieveImageFiles(): Pair<List<File>, String> {
+    suspend internal fun retrieveImageFiles(cachedFileHandler: CachedFileHandler): List<File> {
+
+        val images =
+            cachedFileHandler.getFileNamesFromCloud(this, CachedFileHandler.Category.Images)
+
+        val allImageStrings = images.map { it }
+        val allImages =
+            allImageStrings.map {
+                cachedFileHandler.getFileFromCacheOrCloud(
+                    this,
+                    CachedFileHandler.Category.Images,
+                    it
+                )
+            }
+        return allImages.filterNotNull()
+    }
+
+    internal fun retrieveImageFilesOld(): Pair<List<File>, String> {
         val subfolderPath = ImageSubfolder()?.absolutePath
         val subfolderDir = ImageSubfolder()
 

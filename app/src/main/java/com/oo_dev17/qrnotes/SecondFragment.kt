@@ -25,11 +25,13 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.launch
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
@@ -39,6 +41,9 @@ import com.google.firebase.storage.storage
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.oo_dev17.qrnotes.databinding.FragmentSecondBinding
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -46,10 +51,12 @@ import java.io.File
  */
 class SecondFragment : Fragment() {
 
+    private lateinit var cachedFileHandler: CachedFileHandler
     private lateinit var imageAdapter: ImageAdapter
     private lateinit var stringAdapter: DocumentAdapter
     private var qrNote: QrNote? = null
     private var _binding: FragmentSecondBinding? = null
+    var fileCache: FileCache? = null
 
     // Create a storage reference from our app
     private val storageRef = Firebase.storage.reference
@@ -84,7 +91,6 @@ class SecondFragment : Fragment() {
         val textviewSecond: EditText = binding.textviewSecond
         textviewSecond.setTextIsSelectable(true)
         textviewSecond.autoLinkMask = Linkify.WEB_URLS
-
         val titleText = binding.tileText
 
         // Get the Bundle from the arguments
@@ -196,7 +202,7 @@ class SecondFragment : Fragment() {
     private fun deleteImage(context: Context, imageUri: Uri) {
         val contentResolver: ContentResolver = context.contentResolver
 
-            val file: File = File(java.lang.String.valueOf(imageUri))
+        val file: File = File(java.lang.String.valueOf(imageUri))
         try {
             // Delete using the Media Store URI
             val rowsDeleted = contentResolver.delete(imageUri, null, null)
@@ -214,16 +220,15 @@ class SecondFragment : Fragment() {
                 } else {
                     println("Image deletion failed or image not found.")
                 }
-            }else{
+            } else {
                 println("Image not found.${file.absolutePath}")
             }
-
-
         } catch (e: Exception) {
             println("Error deleting image: " + e.message)
         }
         scanFileAfterDelete(file)
     }
+
     private fun deleteImageFromDcim(context: Context, imageUri: Uri) {
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // Use READ_MEDIA_IMAGES for Android 13 and above
@@ -272,103 +277,94 @@ class SecondFragment : Fragment() {
     }
 
     private fun SetupImagesRecycler() {
-        var (images, error) = qrNote!!.retrieveImageFiles()
-        if (error != "") {
-            _binding!!.recyclerViewImages.post {
-                Snackbar.make(
-                    requireView(),
-                    error,
-                    Snackbar.LENGTH_SHORT
-                ).show()
-            }
-            return
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            var images =
+                withContext(Dispatchers.IO) { qrNote!!.retrieveImageFiles(cachedFileHandler) }
+            // Get the RecyclerView for images
+            val recyclerViewImages: RecyclerView = binding.recyclerViewImages
+            val pictures = images.map { ImageItem.FileImage(it) }
+
+            // Set up the RecyclerView with a horizontal LinearLayoutManager
+            recyclerViewImages.layoutManager =
+                LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+            // Create and set the adapter
+            val imagesItems = pictures +
+                    ImageItem.ResourceImage(R.drawable.plus_sign) +
+                    ImageItem.ResourceImage(android.R.drawable.ic_menu_camera)
+            imageAdapter = ImageAdapter(imagesItems.toMutableList())
+            recyclerViewImages.adapter = imageAdapter
         }
-
-        // Get the RecyclerView for images
-        val recyclerViewImages: RecyclerView = binding.recyclerViewImages
-        val pictures = images.map { ImageItem.FileImage(it) }
-
-        // Set up the RecyclerView with a horizontal LinearLayoutManager
-        recyclerViewImages.layoutManager =
-            LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
-        // Create and set the adapter
-        val imagesItems = pictures +
-                ImageItem.ResourceImage(R.drawable.plus_sign) +
-                ImageItem.ResourceImage(android.R.drawable.ic_menu_camera)
-        imageAdapter = ImageAdapter(imagesItems.toMutableList())
-        recyclerViewImages.adapter = imageAdapter
     }
 
     private fun SetupFilesRecycler() {
-        val allDocumentReferences = storageRef.child(qrNote!!.documentId!!).listAll()
-        allDocumentReferences.addOnSuccessListener { listResult ->
-            run {
-                qrNote!!.allDocuments = listResult.items.map { it.name }
-                val recyclerViewFiles: RecyclerView = binding.recyclerViewFiles
+        cachedFileHandler = CachedFileHandler(storageRef, requireContext())
+        val listResult =
+            cachedFileHandler.getFileNamesFromCloud(qrNote!!, CachedFileHandler.Category.Documents)
 
-                // Set up the RecyclerView with a horizontal LinearLayoutManager
-                recyclerViewFiles.layoutManager =
-                    LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+        val recyclerViewFiles: RecyclerView = binding.recyclerViewFiles
 
-                val stringList = listResult.items.map { it.name }.toMutableList()
-                val stringAdapter = DocumentAdapter(stringList)
-                recyclerViewFiles.adapter = stringAdapter
+        // Set up the RecyclerView with a horizontal LinearLayoutManager
+        recyclerViewFiles.layoutManager =
+            LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
 
-                // Set the layout manager
-                recyclerViewFiles.layoutManager = LinearLayoutManager(requireContext())
+        val stringList = listResult.map { it }.toMutableList()
+        val stringAdapter = DocumentAdapter(stringList)
+        recyclerViewFiles.adapter = stringAdapter
 
-                stringAdapter.onItemClick = { fileName ->
-                    val fileCache = FileCache(requireContext())
-                    // either for using a cached file or for downloading to it
-                    val (localFile, exists) = fileCache.getPathForFileFromCache(
-                        qrNote?.documentId!!,
-                        fileName
-                    )
+        // Set the layout manager
+        recyclerViewFiles.layoutManager = LinearLayoutManager(requireContext())
 
-                    if (exists) {
-                        OpenFile(this).openFileWithAssociatedApp(localFile, requireContext())
-                    } else {
-                        val downloadRef = storageRef.child(qrNote!!.documentId!!).child(fileName)
-                        downloadRef.getFile(localFile).addOnSuccessListener {
-                            // Local temp file has been created
-                            OpenFile(this).openFileWithAssociatedApp(localFile!!, requireContext())
-                        }.addOnFailureListener { fail ->
-                            Toast.makeText(
-                                requireContext(),
-                                "Download failed: " + fail.message,
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
-                }
-                stringAdapter.onItemLongClick = { fileName, position ->
-                    val builder = android.app.AlertDialog.Builder(requireContext())
-                    builder.setTitle("QrNote Options")
-                        .setMessage("What do you want to do with doc ${fileName} ?")
-                        .setPositiveButton("Delete") { dialog, _ ->
-                            // Delete the document
-                            val fileCache = FileCache(requireContext())
-                            fileCache.deleteFileFromCache(qrNote?.documentId!!, fileName)
-                            try {
-                                storageRef.child(qrNote!!.documentId!!).child(fileName).delete()
-                                // remove file entry from ui
-                                stringList.removeAt(position)
-                                stringAdapter.notifyDataSetChanged()
-                            } catch (e: Exception) {
-                                Snackbar.make(
-                                    requireView(),
-                                    "Delete in cloud failed: " + e.message,
-                                    Snackbar.LENGTH_SHORT
-                                ).show()
-                            }
-                            dialog.dismiss()
-                        }
-                        .setNegativeButton("Cancel") { dialog, _ ->
-                            dialog.dismiss()
-                        }
-                        .show()
+        stringAdapter.onItemClick = { fileName ->
+            val fileCache = FileCache(requireContext())
+            // either for using a cached file or for downloading to it
+            val (localFile, exists) = fileCache.getPathForFileFromCache(
+                qrNote?.documentId!!,
+                fileName
+            )
+
+            if (exists) {
+                OpenFile(this).openFileWithAssociatedApp(localFile, requireContext())
+            } else {
+                val downloadRef = storageRef.child(qrNote!!.documentId!!).child(fileName)
+                downloadRef.getFile(localFile).addOnSuccessListener {
+                    // Local temp file has been created
+                    OpenFile(this).openFileWithAssociatedApp(localFile!!, requireContext())
+                }.addOnFailureListener { fail ->
+                    Toast.makeText(
+                        requireContext(),
+                        "Download failed: " + fail.message,
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
+        }
+        stringAdapter.onItemLongClick = { fileName, position ->
+            val builder = android.app.AlertDialog.Builder(requireContext())
+            builder.setTitle("QrNote Options")
+                .setMessage("What do you want to do with doc ${fileName} ?")
+                .setPositiveButton("Delete") { dialog, _ ->
+                    // Delete the document
+                    val fileCache = FileCache(requireContext())
+                    fileCache.deleteFileFromCache(qrNote?.documentId!!, fileName)
+                    try {
+                        storageRef.child(qrNote!!.documentId!!).child(fileName).delete()
+                        // remove file entry from ui
+                        stringList.removeAt(position)
+                        stringAdapter.notifyDataSetChanged()
+                    } catch (e: Exception) {
+                        Snackbar.make(
+                            requireView(),
+                            "Delete in cloud failed: " + e.message,
+                            Snackbar.LENGTH_SHORT
+                        ).show()
+                    }
+                    dialog.dismiss()
+                }
+                .setNegativeButton("Cancel") { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .show()
         }
     }
 
@@ -504,6 +500,7 @@ class SecondFragment : Fragment() {
             Log.d("MediaScan", "Scanned file: $path, URI: $uri")
         }
     }
+
     private fun scanFileAfterDelete(file: File) {
         MediaScannerConnection.scanFile(
             requireContext(), arrayOf(file.parent), null
@@ -553,7 +550,7 @@ class SecondFragment : Fragment() {
 
                 val fileCache = FileCache(requireContext())
                 fileCache.storeFileInCache(qrNote?.documentId!!, fileName!!, uri)
-                val documentRef = storageRef.child(qrNote!!.documentId + "/" + fileName)
+                val documentRef = storageRef.child(qrNote!!.documentId + fileName)
                 val uploadTask = documentRef.putFile(uri)
                 uploadTask.addOnFailureListener { exception ->
                     Toast.makeText(

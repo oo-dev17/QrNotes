@@ -6,6 +6,7 @@ import com.google.android.material.snackbar.Snackbar
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.file.Paths
 
 class FileCache(val context: Context) {
 
@@ -50,15 +51,18 @@ class FileCache(val context: Context) {
         }
     }
 
-    fun getFileFromCache(category: String, fileName: String): ByteArray? {
+    fun getFileFromCache(
+        noteId: String,
+        category: CachedFileHandler.Category,
+        fileName: String
+    ): File? {
         // Get the cache directory and the subfolder for the category
-        val categoryDir = File(context.cacheDir, category)
-        val cacheFile = File(categoryDir, fileName)
+        val cacheFile = File(combinePaths(noteId, category.name), fileName)
 
         // Check if the file exists within the category subfolder
         if (cacheFile.exists()) {
             try {
-                return cacheFile.readBytes()
+                return cacheFile
             } catch (e: IOException) {
                 // Handle the exception
                 e.printStackTrace()
@@ -85,9 +89,9 @@ class FileCache(val context: Context) {
         cacheDir.deleteRecursively()
     }
 
-    fun FileExists(category: String, fileName: String): Boolean {
+    fun FileExists(category: CachedFileHandler.Category, fileName: String): Boolean {
         // Get the cache directory and the subfolder for the category
-        val categoryDir = File(context.cacheDir, category)
+        val categoryDir = File(context.cacheDir, category.name)
         val cacheFile = File(categoryDir, fileName)
         return cacheFile.exists()
     }
@@ -100,5 +104,17 @@ class FileCache(val context: Context) {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    fun combinePaths(vararg paths: String): String {
+        return paths.filter { it.isNotBlank() }.joinToString("/") { it.trim('/') }
+    }
+
+    fun createFileInCache(
+        documentId: String,
+        category: CachedFileHandler.Category,
+        filename: String
+    ): File {
+        return File(combinePaths(documentId, category.name), filename)
     }
 }

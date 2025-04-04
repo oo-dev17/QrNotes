@@ -6,13 +6,20 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.activity.result.launch
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ItemAdapter(
     public var items: List<QrNote>,
-    private val itemLongClickListener: ItemClickListener
+    private val itemLongClickListener: ItemClickListener,
+    private val coroutineScope: CoroutineScope,
+    private val cachedFileHandler: CachedFileHandler
 ) : RecyclerView.Adapter<ItemAdapter.ItemViewHolder>() {
 
     private var itemView: View? = null
@@ -53,12 +60,17 @@ class ItemAdapter(
             itemLongClickListener.showQrNoteOptions(qrNote)
             true // Consume the long click event
         }
-
-        val firstPics = qrNote.retrieveImageFiles().first
-        if (firstPics.isNotEmpty()) {
-            // Load image using a library like Glide or Coil
-            Glide.with(holder.itemView.context).load(firstPics.first())
-                .into(holder.item_image)
+        coroutineScope.launch {
+            val firstPics = withContext(Dispatchers.IO) {
+                qrNote.retrieveImageFiles(cachedFileHandler) // Perform network/disk operation on IO thread
+            }
+            withContext(Dispatchers.Main) { //go back to main thread
+                if (firstPics.isNotEmpty()) {
+                    // Load image using a library like Glide or Coil
+                    Glide.with(holder.itemView.context).load(firstPics.first())
+                        .into(holder.item_image)
+                }
+            }
         }
     }
 

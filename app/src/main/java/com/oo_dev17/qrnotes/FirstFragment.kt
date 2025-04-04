@@ -17,14 +17,18 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
+import com.google.firebase.storage.StorageReference
+import com.google.firebase.storage.storage
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.oo_dev17.qrnotes.databinding.FragmentFirstBinding
+import kotlinx.coroutines.CoroutineScope
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
@@ -34,6 +38,8 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
     private lateinit var itemAdapter: ItemAdapter
     private lateinit var qrNotes: MutableList<QrNote>
     private var _binding: FragmentFirstBinding? = null
+    private lateinit var adapter: ItemAdapter
+    private lateinit var coroutineScope: CoroutineScope
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -197,13 +203,16 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
 
         val recyclerView = binding.myRecyclerView // Assuming you have a RecyclerView in your layout
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
+        coroutineScope = viewLifecycleOwner.lifecycleScope
 
         getAllQrNotes { notes ->
             notes.forEach { qrNote ->
                 Log.d("Firestore", "QrNote: ${qrNote.title}, ${qrNote.content}")
             }
             qrNotes = notes.toMutableList()
-            itemAdapter = ItemAdapter(qrNotes, this)
+            val storageReference = Firebase.storage.reference
+            val cachedFileHandler = CachedFileHandler(storageReference, requireContext())
+            itemAdapter = ItemAdapter(qrNotes, this, coroutineScope, cachedFileHandler )
 
             binding.myRecyclerView.adapter = itemAdapter
             binding.myRecyclerView.layoutManager = LinearLayoutManager(requireContext())
