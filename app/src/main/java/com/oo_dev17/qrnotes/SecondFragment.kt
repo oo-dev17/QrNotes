@@ -25,7 +25,6 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.launch
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -277,7 +276,9 @@ class SecondFragment : Fragment() {
     }
 
     private fun SetupImagesRecycler() {
+        assertQrNoteIsInStorageRef()
 
+        cachedFileHandler = CachedFileHandler(storageRef, requireContext())
         viewLifecycleOwner.lifecycleScope.launch {
             var images =
                 withContext(Dispatchers.IO) { qrNote!!.retrieveImageFiles(cachedFileHandler) }
@@ -294,7 +295,38 @@ class SecondFragment : Fragment() {
                     ImageItem.ResourceImage(android.R.drawable.ic_menu_camera)
             imageAdapter = ImageAdapter(imagesItems.toMutableList())
             recyclerViewImages.adapter = imageAdapter
+
+            val oldImages = qrNote!!.retrieveImageFilesOld()
+            oldImages.map {
+                if (!cachedFileHandler.fileExists(
+                        qrNote!!,
+                        it,
+                        CachedFileHandler.Category.Images
+                    )
+                ) {
+                    cachedFileHandler.uploadToCloud(qrNote!!, it, CachedFileHandler.Category.Images)
+                }
+            }
         }
+    }
+
+    private fun assertQrNoteIsInStorageRef() {
+        storageRef.listAll()
+            .addOnSuccessListener { listResult ->
+                val childExists = listResult.prefixes.any { it.name == qrNote!!.documentId }
+
+                if (!childExists) {
+                    // Child doesn't exist, add it (example: create an empty folder)
+                    storageRef.child(qrNote!!.documentId ?: "fail").putBytes(ByteArray(0))
+                } else {
+                    // Child exists
+                    println("Child 'yourChildName' exists.")
+                }
+            }
+            .addOnFailureListener { exception ->
+                // Handle errors (e.g., network issues, permissions)
+                println("Error checking child: ${exception.message}")
+            }
     }
 
     private fun SetupFilesRecycler() {

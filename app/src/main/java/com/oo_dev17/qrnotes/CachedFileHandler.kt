@@ -1,6 +1,7 @@
 package com.oo_dev17.qrnotes
 
 import android.content.Context
+import androidx.core.net.toUri
 import com.google.firebase.storage.StorageReference
 import kotlinx.coroutines.tasks.await
 import java.io.File
@@ -30,6 +31,24 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
                 .await()
             return file
         }
+    }
+
+    fun fileExists(qrNote: QrNote, file: File, category: Category): Boolean {
+        val all = storageRef.child(qrNote!!.documentId!!).child(category.name).listAll()
+        var allDocuments: List<String> = listOf()
+        all.addOnSuccessListener { listResult ->
+            run { allDocuments = listResult.items.map { it.name } }
+        }
+        return file.name in allDocuments
+    }
+
+    fun uploadToCloud(qrNote: QrNote, file: File, category: Category) {
+        storageRef.child(qrNote.documentId!!).child(category.name).child(file.name)
+            .putFile(file.toUri()).addOnSuccessListener {
+                println("Upload successful: "+file.name)
+            }.addOnFailureListener {fail->
+                println("Upload failed: "+fail.message)
+            }
     }
 
     public enum class Category {

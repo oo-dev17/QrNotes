@@ -84,26 +84,24 @@ data class QrNote(
         return allImages.filterNotNull()
     }
 
-    internal fun retrieveImageFilesOld(): Pair<List<File>, String> {
+    internal fun retrieveImageFilesOld(): List<File> {
         val subfolderPath = ImageSubfolder()?.absolutePath
         val subfolderDir = ImageSubfolder()
 
 
         if (subfolderDir == null || !subfolderDir.exists()) {
-            return Pair(emptyList<File>(), "subfolderDir ${subfolderPath} does not exist!")
+            return emptyList()
         }
         val imageExtensions = setOf("jpg", "jpeg", "png", "gif", "bmp", "webp")
         // Filter files in the subfolder by image extensions
         val subfolder = File(subfolderPath)
         val files = subfolder.listFiles()
-        return Pair(
-            files
-                ?.filter { file ->
-                    file.isFile && imageExtensions.any { ext ->
-                        file.name.endsWith(".$ext", ignoreCase = true)
-                    }
-                }
-                ?: emptyList(),
-            "") // Return an empty list if the subfolder is empty or inaccessible
+        return files?.filter { file ->
+            file.isFile && imageExtensions.any { ext ->
+                file.name.endsWith(".$ext", ignoreCase = true)
+            }
+        }
+            ?: emptyList()
+        // Return an empty list if the subfolder is empty or inaccessible
     }
 }
