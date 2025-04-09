@@ -115,6 +115,9 @@ class FileCache(val context: Context) {
         category: CachedFileHandler.Category,
         filename: String
     ): File {
-        return File(combinePaths(documentId, category.name), filename)
+        val folder = File(context.cacheDir,combinePaths( documentId, category.name))
+        if (!folder.exists())
+            folder.mkdir()
+        return File(folder, filename)
     }
 }

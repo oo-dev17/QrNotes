@@ -9,13 +9,18 @@ import java.io.File
 class CachedFileHandler(private val storageRef: StorageReference, val context: Context) {
     val fileCache = FileCache(context)
 
-    fun getFileNamesFromCloud(qrNote: QrNote, category: Category): List<String> {
-        val all = storageRef.child(qrNote!!.documentId!!).child(category.name).listAll()
-        var allDocuments: List<String> = listOf()
-        all.addOnSuccessListener { listResult ->
-            run { allDocuments = listResult.items.map { it.name } }
+    suspend fun getFileNamesFromCloud(qrNote: QrNote, category: Category): List<String> {
+        return try {
+            val listResult = storageRef
+                .child(qrNote.documentId!!)
+                .child(category.name)
+                .listAll()
+                .await() // Suspends coroutine until complete
+
+            listResult.items.map { it.name }
+        } catch (e: Exception) {
+            emptyList() // Or throw to propagate error
         }
-        return allDocuments
     }
 
     suspend fun getFileFromCacheOrCloud(
@@ -26,20 +31,33 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
         if (fileCache.FileExists(Category.Images, filename))
             return fileCache.getFileFromCache(qrNote.documentId!!, category, filename)
         else {
+            try {
+
             val file = fileCache.createFileInCache(qrNote.documentId!!, category, filename)
+            if (file.exists()) return file
             storageRef.child(qrNote.documentId!!).child(category.name).child(filename).getFile(file)
                 .await()
             return file
+            }
+            catch (exception: Exception) {
+                println("Error getting file from cloud: "+exception.message)
+                return null
+            }
         }
     }
 
-    fun fileExists(qrNote: QrNote, file: File, category: Category): Boolean {
-        val all = storageRef.child(qrNote!!.documentId!!).child(category.name).listAll()
-        var allDocuments: List<String> = listOf()
-        all.addOnSuccessListener { listResult ->
-            run { allDocuments = listResult.items.map { it.name } }
+    suspend fun fileExists(qrNote: QrNote, file: File, category: Category): Boolean {
+        return try {
+            val listResult = storageRef
+                .child(qrNote.documentId!!)
+                .child(category.name)
+                .listAll()
+                .await() // Wait for the async operation
+
+            file.name in listResult.items.map { it.name }
+        } catch (e: Exception) {
+            false // Return false if there's any error (or throw to propagate)
         }
-        return file.name in allDocuments
     }
 
     fun uploadToCloud(qrNote: QrNote, file: File, category: Category) {
