@@ -230,6 +230,7 @@ class SecondFragment : Fragment() {
             recyclerViewImages.adapter = imageAdapter
 
             val oldImages = qrNote!!.retrieveImageFilesOld()
+
             oldImages.map {
                 if (!cachedFileHandler.fileExists(
                         qrNote!!,
@@ -289,6 +290,12 @@ class SecondFragment : Fragment() {
                                         requireContext(),
                                         findAndGetMediaStoreUri(requireContext(), outputFile)!!
                                     )
+                                    cachedFileHandler.deleteFileFromCloud(
+                                        qrNote!!,
+                                        imageItem.file.name,
+                                        CachedFileHandler.Category.Images
+                                    )
+                                    dialog.dismiss()
                                 } catch (e: Exception) {
                                     Snackbar.make(
                                         requireView(),

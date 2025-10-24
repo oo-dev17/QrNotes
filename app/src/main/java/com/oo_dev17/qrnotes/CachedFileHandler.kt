@@ -1,6 +1,7 @@
 package com.oo_dev17.qrnotes
 
 import android.content.Context
+import android.util.Log
 import androidx.core.net.toUri
 import com.google.firebase.storage.StorageReference
 import kotlinx.coroutines.tasks.await
@@ -32,15 +33,18 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
             return fileCache.getFileFromCache(qrNote.documentId!!, category, filename)
         else {
             try {
+                val file = fileCache.createFileInCache(qrNote.documentId!!, category, filename)
+                if (file.exists()) return file
 
-            val file = fileCache.createFileInCache(qrNote.documentId!!, category, filename)
-            if (file.exists()) return file
-            storageRef.child(qrNote.documentId!!).child(category.name).child(filename).getFile(file)
-                .await()
-            return file
-            }
-            catch (exception: Exception) {
-                println("Error getting file from cloud: "+exception.message)
+                // Ensure the parent directory exists before attempting to download.
+                file.parentFile?.mkdirs()
+
+                storageRef.child(qrNote.documentId!!).child(category.name).child(filename)
+                    .getFile(file)
+                    .await()
+                return file
+            } catch (exception: Exception) {
+                println("Error getting for docID:'${qrNote.documentId}' cat: ${category.name} '$filename' from cloud: " + exception.message)
                 return null
             }
         }
@@ -63,10 +67,16 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
     fun uploadToCloud(qrNote: QrNote, file: File, category: Category) {
         storageRef.child(qrNote.documentId!!).child(category.name).child(file.name)
             .putFile(file.toUri()).addOnSuccessListener {
-                println("Upload successful: "+file.name)
-            }.addOnFailureListener {fail->
-                println("Upload failed: "+fail.message)
+                println("Upload successful: " + file.name)
+            }.addOnFailureListener { fail ->
+                println("Upload failed: " + fail.message)
             }
+    }
+
+    fun deleteFileFromCloud(qrNote: QrNote, name: String, category: Category) {
+
+        storageRef.child(qrNote.documentId!!).child(category.name).child(name).delete().addOnFailureListener { fail -> }
+        Log.d("CachedFileHandler", "Failed to delete file: deleteFileFromCloud: docId: '${qrNote.documentId}' cat:${category.name} name: '$name'")
     }
 
     public enum class Category {

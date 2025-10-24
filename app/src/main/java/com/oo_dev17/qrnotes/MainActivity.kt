@@ -31,6 +31,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
 
+
+
         // Inflate the floating view
         val floatingView = layoutInflater.inflate(R.layout.floating_image_add, null)
 

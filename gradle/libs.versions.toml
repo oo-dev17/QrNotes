@@ -1,43 +1,38 @@
 [versions]
-agp = "8.9.1"
-androidRteditor = "1.7.0"
-firebaseBom = "33.9.0"
-firebaseBomVersion = "32.2.3"
-firebaseMessaging = "24.1.1"
-glide = "4.16.0"
-kotlin = "1.9.24"
-coreKtx = "1.15.0"
+agp = "8.13.0"
+firebaseBom = "34.4.0"
+firebaseMessaging = "25.0.1"
+firebaseAppcheck = "19.0.1"
+glide = "5.0.5"
+kotlin = "2.2.21"
+coreKtx = "1.17.0"
 junit = "4.13.2"
-junitVersion = "1.2.1"
-espressoCore = "3.6.1"
-appcompat = "1.7.0"
-material = "1.12.0"
-constraintlayout = "2.2.0"
-navigationFragmentKtx = "2.8.7"
-navigationUiKtx = "2.8.7"
-playServicesBase = "18.6.0"
-playServicesBasement = "18.6.0"
+junitVersion = "1.3.0"
+espressoCore = "3.7.0"
+appcompat = "1.7.1"
+material = "1.13.0"
+constraintlayout = "2.2.1"
+navigationFragmentKtx = "2.9.5"
+navigationUiKtx = "2.9.5"
 recyclerview = "1.4.0"
 firebaseCommonKtx = "21.0.0"
-firebaseFirestoreKtx = "25.1.2"
-firebaseFirestore = "25.1.2"
-firebaseAuth = "23.2.0"
-credentials = "1.5.0-rc01"
-credentialsPlayServicesAuth = "1.5.0-rc01"
+firebaseFirestoreKtx = "25.1.4"
+credentials = "1.5.0"
+credentialsPlayServicesAuth = "1.5.0"
 googleid = "1.1.1"
-firebaseCrashlyticsBuildtools = "3.0.3"
 zxingAndroidEmbedded = "4.3.0"
-firebaseStorage = "21.0.1"
+firebaseStorage = "22.0.1"
+firebaseStorageKtx = "21.0.2"
 
 [libraries]
-android-rteditor = { module = "com.1gravity:android-rteditor", version.ref = "androidRteditor" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-storage-ktx = { group = "com.google.firebase", name = "firebase-storage-ktx", version.ref = "firebaseStorage" }
+firebase-appcheck-play-integrity = { group = "com.google.firebase", name = "firebase-appcheck-playintegrity", version.ref = "firebaseAppcheck" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 compiler = { module = "com.github.bumptech.glide:compiler", version.ref = "glide" }
-firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
-firebase-bom-v3223 = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBomVersion" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging", version.ref = "firebaseMessaging" }
-firebase-storage-ktx = { module = "com.google.firebase:firebase-storage-ktx" }
 glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
+google-firebase-storage-ktx = { module = "com.google.firebase:firebase-storage-ktx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -49,16 +44,12 @@ androidx-navigation-ui-ktx = { group = "androidx.navigation", name = "navigation
 androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
 firebase-common-ktx = { group = "com.google.firebase", name = "firebase-common-ktx", version.ref = "firebaseCommonKtx" }
 firebase-firestore-ktx = { group = "com.google.firebase", name = "firebase-firestore-ktx", version.ref = "firebaseFirestoreKtx" }
-firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" }
-firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version = "23.2.0" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version = "24.0.1" }
 androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
 androidx-credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentialsPlayServicesAuth" }
 googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
-firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
-play-services-base = { module = "com.google.android.gms:play-services-base", version.ref = "playServicesBase" }
-play-services-basement = { module = "com.google.android.gms:play-services-basement", version.ref = "playServicesBasement" }
 zxing-android-embedded = { group = "com.journeyapps", name = "zxing-android-embedded", version.ref = "zxingAndroidEmbedded" }
-firebase-storage = { group = "com.google.firebase", name = "firebase-storage", version.ref = "firebaseStorage" }
+com-google-firebase-firebase-storage-ktx = { group = "com.google.firebase", name = "firebase-storage-ktx", version.ref = "firebaseStorageKtx" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -80,7 +80,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
 
                 try {
                     sharedDb.collection("qrNotes").add(note).addOnSuccessListener { docRef ->
-                        Log.d("Firestore", "Note added with ID: ${docRef.id}")
+                        Log.d("FirestoreAccess", "Note added with ID: ${docRef.id}")
                         sharedDb.collection("qrNotes").document(docRef.id).update("id", docRef.id)
                         note.documentId = docRef.id
 
@@ -207,7 +207,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
 
         getAllQrNotes { notes ->
             notes.forEach { qrNote ->
-                Log.d("Firestore", "QrNote: ${qrNote.title}, ${qrNote.content}")
+                Log.d("FirestoreAccess", "QrNote found: Title:${qrNote.title},Content:${qrNote.content} QrCode:${qrNote.qrCode} DocId:'${qrNote.documentId}")
             }
             qrNotes = notes.toMutableList()
             val storageReference = Firebase.storage.reference
@@ -218,6 +218,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             binding.myRecyclerView.layoutManager = LinearLayoutManager(requireContext())
             recyclerView.adapter = itemAdapter
         }
+        
         binding.searchText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
 

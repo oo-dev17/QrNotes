@@ -3,8 +3,10 @@ package com.oo_dev17.qrnotes
 import android.os.Environment
 import android.os.Parcel
 import android.os.Parcelable
+import android.util.Log
 import com.google.firebase.firestore.Exclude
 import java.io.File
+import java.io.IOException
 
 data class QrNote(
     val title: String? = null,
@@ -72,36 +74,42 @@ data class QrNote(
         val images =
             cachedFileHandler.getFileNamesFromCloud(this, CachedFileHandler.Category.Images)
 
-        val allImageStrings = images.map { it }
-        val allImages =
-            allImageStrings.map {
+        return images.mapNotNull { imageName ->
+            try {
                 cachedFileHandler.getFileFromCacheOrCloud(
                     this,
                     CachedFileHandler.Category.Images,
-                    it
+                    imageName
                 )
+            } catch (e: IOException) {
+                Log.e(
+                    "QrNote",
+                    "Failed to retrieve image file '$imageName' for note '$documentId' at QrNote.retrieveImageFiles",
+                    e
+                )
+                null
             }
-        return allImages.filterNotNull()
+        }
     }
 
     internal fun retrieveImageFilesOld(): List<File> {
-        val subfolderPath = ImageSubfolder()?.absolutePath
         val subfolderDir = ImageSubfolder()
 
-
-        if (subfolderDir == null || !subfolderDir.exists()) {
+        if (!subfolderDir.exists()) {
             return emptyList()
         }
         val imageExtensions = setOf("jpg", "jpeg", "png", "gif", "bmp", "webp")
         // Filter files in the subfolder by image extensions
-        val subfolder = File(subfolderPath)
-        val files = subfolder.listFiles()
-        return files?.filter { file ->
-            file.isFile && imageExtensions.any { ext ->
-                file.name.endsWith(".$ext", ignoreCase = true)
-            }
+        return try {
+            val files = subfolderDir.listFiles()
+            files?.filter { file ->
+                file.isFile && imageExtensions.any { ext ->
+                    file.name.endsWith(".$ext", ignoreCase = true)
+                }
+            } ?: emptyList()
+        } catch (e: Exception) {
+             Log.e("QrNote", "Error accessing files in ${subfolderDir.absolutePath} for note '$documentId' in retrieveImageFilesOld.", e)
+            emptyList()
         }
-            ?: emptyList()
-        // Return an empty list if the subfolder is empty or inaccessible
     }
 }
