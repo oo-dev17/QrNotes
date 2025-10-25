@@ -5,7 +5,6 @@ import ImageAdapter
 import android.Manifest
 import android.app.Activity
 import android.content.ContentResolver
-import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -15,6 +14,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+
 import android.text.Editable
 import android.text.util.Linkify
 import android.util.Log
@@ -31,17 +31,20 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
+import com.google.firebase.storage.StorageReference
 import com.google.firebase.storage.storage
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.oo_dev17.qrnotes.databinding.FragmentSecondBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -64,26 +67,16 @@ class SecondFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
-    override fun onAttach(context: Context) {
-        super.onAttach(context)
-    }
-
-    override fun onDetach() {
-        super.onDetach()
-    }
-
-    override fun onResume() {
-        super.onResume()
-    }
-
     override fun onPause() {
         super.onPause()
         saveText()
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
     ): View {
+
         _binding = FragmentSecondBinding.inflate(inflater, container, false)
 
         binding.textviewSecond.setTextIsSelectable(true)
@@ -110,7 +103,8 @@ class SecondFragment : Fragment() {
                 binding.textviewSecond.text =
                     Editable.Factory.getInstance().newEditable(qrNote!!.content)
                 titleText.text = qrNote?.title ?: "No title"
-                binding.qrCode.text = qrNote!!.qrCode
+                binding.qrCode.text = "QR:" + qrNote!!.qrCode
+                moveOrphanedPdfsToDocuments() // Move any orphaned PDFs on startup
             }
         }
         binding.fabAddDoc.setOnClickListener { _ ->
@@ -162,58 +156,62 @@ class SecondFragment : Fragment() {
         scanFileAfterDelete(file)
     }
 
-    private fun deleteImageFromDcim(context: Context, imageUri: Uri) {
-        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Use READ_MEDIA_IMAGES for Android 13 and above
-            Manifest.permission.READ_MEDIA_IMAGES
-        } else {
-            // Use READ_EXTERNAL_STORAGE for older versions
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-        }
 
-        if (ContextCompat.checkSelfPermission(
-                requireContext(), permission
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            // Request the permission
-            ActivityCompat.requestPermissions(
-                requireActivity(), arrayOf(permission), REQUEST_CODE_WRITE_EXTERNAL_STORAGE
-            )
-            deleteImage(context, imageUri)
-        } else {
-            // Permission already granted, open the gallery
-            deleteImage(context, imageUri)
-        }
-    }
+    private fun moveOrphanedPdfsToDocuments() {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val noteRootRef = storageRef.child(qrNote!!.documentId!!)
+                val listResult = noteRootRef.listAll().await()
 
-    fun findAndGetMediaStoreUri(context: Context, imageFile: File): Uri? {
-        val projection = arrayOf(
-            MediaStore.Images.Media._ID,
-        )
-        val selection = "${MediaStore.Images.Media.DATA} = ?"
-        val selectionArgs = arrayOf(imageFile.absolutePath)
+                // Filter for files directly in the note's root directory that are PDFs
+                val pdfsInRoot = listResult.items.filter {
+                    it.name.endsWith(".pdf", ignoreCase = true)
+                }
 
-        context.contentResolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            projection,
-            selection,
-            selectionArgs,
-            null
-        )?.use { cursor ->
-            while (cursor.moveToNext()) {
-                val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-                val id = cursor.getLong(idColumn)
-                return ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+                if (pdfsInRoot.isNotEmpty()) {
+                    Log.d("PdfMigration", "Found ${pdfsInRoot.size} orphaned PDF(s) to move.")
+                    val documentsFolderRef = noteRootRef.child(CachedFileHandler.Category.Documents.name)
+
+                    for (pdfRef in pdfsInRoot) {
+                        val destinationRef = documentsFolderRef.child(pdfRef.name)
+
+                        // Get file bytes
+                        val bytes = pdfRef.getBytes(Long.MAX_VALUE).await()
+
+                        // Upload to new location
+                        destinationRef.putBytes(bytes).await()
+
+                        // Delete original file
+                        pdfRef.delete().await()
+
+                        Log.d("PdfMigration", "Moved ${pdfRef.name} to Documents folder.")
+                    }
+
+                    // Refresh UI on the main thread
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(requireContext(), "Organized ${pdfsInRoot.size} PDF(s).", Toast.LENGTH_SHORT).show()
+                        // Refresh the documents recycler view to show the moved files
+                        SetupFilesRecycler()
+                    }
+                } else {
+                    Log.d("PdfMigration", "No orphaned PDFs found.")
+                }
+
+            } catch (e: Exception) {
+                Log.e("PdfMigration", "Error moving orphaned PDFs: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(requireContext(), "Error organizing PDFs.", Toast.LENGTH_SHORT).show()
+                }
             }
         }
-        return null
     }
+
 
     private fun SetupImagesRecycler() {
         assertQrNoteIsInStorageRef()
 
         viewLifecycleOwner.lifecycleScope.launch {
-            var images =
+            val images =
                 withContext(Dispatchers.IO) { qrNote!!.retrieveImageFiles(cachedFileHandler) }
             // Get the RecyclerView for images
             val recyclerViewImages: RecyclerView = binding.recyclerViewImages
@@ -229,18 +227,7 @@ class SecondFragment : Fragment() {
             imageAdapter = ImageAdapter(imagesItems.toMutableList())
             recyclerViewImages.adapter = imageAdapter
 
-            val oldImages = qrNote!!.retrieveImageFilesOld()
 
-            oldImages.map {
-                if (!cachedFileHandler.fileExists(
-                        qrNote!!,
-                        it,
-                        CachedFileHandler.Category.Images
-                    )
-                ) {
-                    cachedFileHandler.uploadToCloud(qrNote!!, it, CachedFileHandler.Category.Images)
-                }
-            }
 
             imageAdapter.onItemClick = { imageItem ->
                 when (imageItem) {
@@ -284,12 +271,6 @@ class SecondFragment : Fragment() {
                                     imageAdapter.imageItems.removeAt(position)
                                     imageAdapter.notifyItemRemoved(position)
 
-                                    val outputFile =
-                                        File(qrNote!!.ImageSubfolder(), imageItem.file.name)
-                                    deleteImageFromDcim(
-                                        requireContext(),
-                                        findAndGetMediaStoreUri(requireContext(), outputFile)!!
-                                    )
                                     cachedFileHandler.deleteFileFromCloud(
                                         qrNote!!,
                                         imageItem.file.name,
@@ -338,9 +319,11 @@ class SecondFragment : Fragment() {
     }
 
     private fun SetupFilesRecycler() {
-
+        assertQrNoteIsInStorageRef()
         // Capture fragment reference as 'fragment' to avoid confusion with coroutine 'this'
+
         val fragment = this@SecondFragment
+
 
         lifecycleScope.launch {  // Using Fragment's lifecycleScope
             try {
@@ -357,12 +340,20 @@ class SecondFragment : Fragment() {
                     LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
 
                 val stringList = listResult.map { it }.toMutableList()
-                val stringAdapter = DocumentAdapter(stringList)
-                recyclerViewFiles.adapter = stringAdapter
+                var stringAdapter = DocumentAdapter(stringList)
+                if(stringAdapter.itemCount == 0)
+                    stringAdapter= DocumentAdapter(mutableListOf("No documents found"))
+                recyclerViewFiles.adapter =   stringAdapter
 
-                // Set the layout manager
-                recyclerViewFiles.layoutManager = LinearLayoutManager(requireContext())
-
+                // Commenting out statistics part as properties don't exist on QrNote yet.
+                /*
+                for (doc in stringList) {
+                    qrNote!!.documentsCount++;
+                    if (cachedFileHandler.fileExists(qrNote!!, doc, CachedFileHandler.Category.Documents))
+                        qrNote?.docsLoadedFromCache++;
+                    Log.d("SecondFragment", "${qrNote!!.documentId}: doc found: ${doc}")
+                }
+                */
                 stringAdapter.onItemClick = { fileName ->
                     val fileCache = FileCache(requireContext())
                     // either for using a cached file or for downloading to it
@@ -372,12 +363,19 @@ class SecondFragment : Fragment() {
                     )
 
                     if (exists) {
-                        OpenFile(fragment).openFileWithAssociatedApp(localFile, requireContext())
+                        OpenFile(fragment).openFileWithAssociatedApp(
+                            localFile,
+                            requireContext()
+                        )
                     } else {
-                        val downloadRef = storageRef.child(qrNote!!.documentId!!).child(fileName)
+                        val downloadRef =
+                            storageRef.child(qrNote!!.documentId!!).child(CachedFileHandler.Category.Documents.name).child(fileName)
                         downloadRef.getFile(localFile).addOnSuccessListener {
                             // Local temp file has been created
-                            OpenFile(fragment).openFileWithAssociatedApp(localFile!!, requireContext())
+                            OpenFile(fragment).openFileWithAssociatedApp(
+                                localFile!!,
+                                requireContext()
+                            )
                         }.addOnFailureListener { fail ->
                             Toast.makeText(
                                 requireContext(),
@@ -396,15 +394,17 @@ class SecondFragment : Fragment() {
                             val fileCache = FileCache(requireContext())
                             fileCache.deleteFileFromCache(qrNote?.documentId!!, fileName)
                             try {
-                                storageRef.child(qrNote!!.documentId!!).child(fileName).delete()
+                                storageRef.child(qrNote!!.documentId!!).child(CachedFileHandler.Category.Documents.name).child(fileName).delete()
                                 // remove file entry from ui
                                 stringList.removeAt(position)
                                 stringAdapter.notifyDataSetChanged()
+                                dialog.dismiss()
+
                             } catch (e: Exception) {
                                 Snackbar.make(
                                     requireView(),
-                                    "Delete in cloud failed: " + e.message,
-                                    Snackbar.LENGTH_SHORT
+                                    "Delete fail: " + e.message,
+                                    Snackbar.LENGTH_LONG
                                 ).show()
                             }
                             dialog.dismiss()
@@ -414,9 +414,9 @@ class SecondFragment : Fragment() {
                         }
                         .show()
                 }
+
             } catch (e: Exception) {
-                // Handle error (e.g., show toast)
-                Toast.makeText(requireContext(), "Error loading files", Toast.LENGTH_SHORT).show()
+                Log.e("SecondFragment", "Error setting up files recycler: ", e)
             }
         }
     }
@@ -451,7 +451,6 @@ class SecondFragment : Fragment() {
 
     private fun checkStoragePermission(openGallery: Boolean) {
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Use READ_MEDIA_IMAGES for Android 13 and above
             Manifest.permission.READ_MEDIA_IMAGES
         } else {
             // Use READ_EXTERNAL_STORAGE for older versions
@@ -479,7 +478,8 @@ class SecondFragment : Fragment() {
 
     private fun checkCameraPermission() {
         if (ContextCompat.checkSelfPermission(
-                requireContext(), Manifest.permission.CAMERA
+                requireContext(),
+                Manifest.permission.CAMERA
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             // Request the permission

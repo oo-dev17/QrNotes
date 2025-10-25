@@ -35,13 +35,13 @@
         <Button
             android:id="@+id/button_scan_qr"
             style="@style/Widget.AppCompat.Button"
-            android:layout_width="64dp"
+            android:layout_width="90dp"
             android:layout_height="51dp"
+            android:text="🖊"
             app:flow_horizontalAlign="end"
             app:icon="@drawable/qr_code"
-
-            app:iconPadding="0dp"
-            app:iconSize="24dp"
+            app:iconSize="20dp"
+            app:iconGravity="textEnd"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
@@ -64,12 +64,13 @@
 
         <EditText
             android:id="@+id/textview_second"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
 
 
             android:layout_marginTop="10dp"
             android:autoLink="web|email"
+            android:inputType="textMultiLine"
             android:linksClickable="true"
             android:minHeight="150dp"
             android:text="@string/lorem_ipsum"

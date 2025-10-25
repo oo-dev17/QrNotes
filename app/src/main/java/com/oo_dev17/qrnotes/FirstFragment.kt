@@ -23,12 +23,12 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
-import com.google.firebase.storage.StorageReference
 import com.google.firebase.storage.storage
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.oo_dev17.qrnotes.databinding.FragmentFirstBinding
 import kotlinx.coroutines.CoroutineScope
+import java.text.SimpleDateFormat
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
@@ -207,18 +207,21 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
 
         getAllQrNotes { notes ->
             notes.forEach { qrNote ->
-                Log.d("FirestoreAccess", "QrNote found: Title:${qrNote.title},Content:${qrNote.content} QrCode:${qrNote.qrCode} DocId:'${qrNote.documentId}")
+                Log.d(
+                    "FirestoreAccess",
+                    "QrNote found: Title:${qrNote.title},Content:${qrNote.content} QrCode:${qrNote.qrCode} DocId:'${qrNote.documentId}'"
+                )
             }
             qrNotes = notes.toMutableList()
             val storageReference = Firebase.storage.reference
             val cachedFileHandler = CachedFileHandler(storageReference, requireContext())
-            itemAdapter = ItemAdapter(qrNotes, this, coroutineScope, cachedFileHandler )
+            itemAdapter = ItemAdapter(qrNotes, this, coroutineScope, cachedFileHandler)
 
             binding.myRecyclerView.adapter = itemAdapter
             binding.myRecyclerView.layoutManager = LinearLayoutManager(requireContext())
             recyclerView.adapter = itemAdapter
         }
-        
+
         binding.searchText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
 
@@ -255,7 +258,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         db.collection("qrNotes")
             .get()
             .addOnSuccessListener { result ->
-                Log.w("Firestore", "Successful getting QrNotes")
+                Log.w("FirestoreAccess", "Successful getting QrNotes")
                 try {
                     val notes = result.map { qrNote ->
                         val qr = qrNote.toObject(QrNote::class.java)
@@ -287,18 +290,43 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
     }
 
     override fun showQrNoteOptions(qrNote: QrNote) {
+        val simpleDateFormat = SimpleDateFormat("dd.MM.yyyy - HH:mm:ss")
+        val dateString = simpleDateFormat.format(qrNote.creationDate)
+        val info =
+            "Doc.Id:${qrNote.documentId}\n Created:${dateString}\nPictures: ${qrNote.pictureCount}\n  from cache: ${qrNote.picsLoadedFromCache}\n  from firestore: ${qrNote.picsLoadedFromFirestore}\n" +
+                    "Documents: ${qrNote.documentsCount}\n from cache ${qrNote.docsLoadedFromCache}\n from firestore ${qrNote.docsLoadedFromFirestore}"
+
         val builder = AlertDialog.Builder(requireContext())
         builder.setTitle("QrNote Options")
-            .setMessage("What do you want to do with this QrNote?")
+            .setMessage("$info\n\n\nWhat do you want to do with this QrNote?")
             .setPositiveButton("Delete") { dialog, _ ->
                 deleteQrNote(qrNote)
                 dialog.dismiss()
             }
+/*            .setNeutralButton("Info") { dialog, _ ->
+                showQrNoteInfo(qrNote)
+                dialog.dismiss()
+            }*/
             .setNegativeButton("Cancel") { dialog, _ ->
                 dialog.dismiss()
             }
             .show()
     }
+/*
+    private fun showQrNoteInfo(qrNote: QrNote) {
+
+        val info =
+            "Pictures: ${qrNote.pictureCount}\nLoaded from cache: ${qrNote.picsLoadedFromCache}\nLoaded from cloud: ${qrNote.picsLoadedFromFirestore}\n" +
+                    "Documents: ${qrNote.allDocuments.count()} From cache ${qrNote.docsLoadedFromCache} From firestore ${qrNote.docsLoadedFromFirestore}"
+
+        val builder = AlertDialog.Builder(requireContext())
+        builder.setTitle("Note Info")
+            .setMessage(info)
+            .setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }*/
 
     override fun deleteQrNote(qrNote: QrNote) {
         val position = qrNotes.indexOf(qrNote)

@@ -4,7 +4,7 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 
-class DocumentAdapter( val stringList: MutableList<String>) :
+class DocumentAdapter(val stringList: MutableList<String>) :
     RecyclerView.Adapter<DocumentViewHolder>() {
 
     var onItemClick: ((String) -> Unit)? = null
@@ -19,7 +19,11 @@ class DocumentAdapter( val stringList: MutableList<String>) :
     override fun onBindViewHolder(holder: DocumentViewHolder, position: Int) {
         val stringEntry = stringList[position]
         holder.stringTextView.text = stringEntry
-        holder.logoTextView.text = stringEntry.substring(stringEntry.length -3, stringEntry.length).uppercase()
+        val charPosition = stringEntry.lastIndexOf('.')
+
+        holder.logoTextView.text =
+            if (charPosition == -1) "-" else stringEntry.substring(charPosition, stringEntry.length)
+                .uppercase()
 
         // Set click listener for the item
         holder.itemView.setOnClickListener {

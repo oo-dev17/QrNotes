@@ -28,13 +28,13 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
         qrNote: QrNote,
         category: Category,
         filename: String
-    ): File? {
-        if (fileCache.FileExists(Category.Images, filename))
-            return fileCache.getFileFromCache(qrNote.documentId!!, category, filename)
-        else {
-            try {
+    ): Pair<File?, Boolean> {
+        if (fileCache.FileExists(Category.Images, filename)) {
+            return Pair(fileCache.getFileFromCache(qrNote.documentId!!, category, filename), true)
+        } else {
+            return try {
                 val file = fileCache.createFileInCache(qrNote.documentId!!, category, filename)
-                if (file.exists()) return file
+                if (file.exists()) return Pair(file, true)
 
                 // Ensure the parent directory exists before attempting to download.
                 file.parentFile?.mkdirs()
@@ -42,15 +42,19 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
                 storageRef.child(qrNote.documentId!!).child(category.name).child(filename)
                     .getFile(file)
                     .await()
-                return file
+                Pair(file, false)
             } catch (exception: Exception) {
                 println("Error getting for docID:'${qrNote.documentId}' cat: ${category.name} '$filename' from cloud: " + exception.message)
-                return null
+                Pair(null, false)
             }
         }
     }
 
     suspend fun fileExists(qrNote: QrNote, file: File, category: Category): Boolean {
+        return fileExists(qrNote, file.name, category)
+    }
+
+    suspend fun fileExists(qrNote: QrNote, fileName: String, category: Category): Boolean {
         return try {
             val listResult = storageRef
                 .child(qrNote.documentId!!)
@@ -58,7 +62,7 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
                 .listAll()
                 .await() // Wait for the async operation
 
-            file.name in listResult.items.map { it.name }
+            fileName in listResult.items.map { it.name }
         } catch (e: Exception) {
             false // Return false if there's any error (or throw to propagate)
         }
@@ -75,8 +79,12 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
 
     fun deleteFileFromCloud(qrNote: QrNote, name: String, category: Category) {
 
-        storageRef.child(qrNote.documentId!!).child(category.name).child(name).delete().addOnFailureListener { fail -> }
-        Log.d("CachedFileHandler", "Failed to delete file: deleteFileFromCloud: docId: '${qrNote.documentId}' cat:${category.name} name: '$name'")
+        storageRef.child(qrNote.documentId!!).child(category.name).child(name).delete()
+            .addOnFailureListener { fail -> }
+        Log.d(
+            "CachedFileHandler",
+            "Failed to delete file: deleteFileFromCloud: docId: '${qrNote.documentId}' cat:${category.name} name: '$name'"
+        )
     }
 
     public enum class Category {

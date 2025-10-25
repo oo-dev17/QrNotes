@@ -13,8 +13,15 @@ data class QrNote(
     val content: String? = null,
     val creationDate: Long = System.currentTimeMillis(),
     val qrCode: String = "",
-    var documentId: String? = null
+    var documentId: String? = null,
 
+    // Runtime statistics, excluded from Firestore
+    @get:Exclude var pictureCount: Int = 0,
+    @get:Exclude var documentsCount: Int = 0,
+    @get:Exclude var picsLoadedFromCache: Int = 0,
+    @get:Exclude var docsLoadedFromCache: Int = 0,
+    @get:Exclude var picsLoadedFromFirestore: Int = 0,
+    @get:Exclude var docsLoadedFromFirestore: Int = 0
 ) : Parcelable {
     // Constructor to create a QrNote from a Parcel
     constructor(parcel: Parcel) : this(
@@ -25,7 +32,7 @@ data class QrNote(
         parcel.readString()!!
     )
 
-    constructor() : this("", "", System.currentTimeMillis(), "")
+    constructor() : this("", "", System.currentTimeMillis(), "", "")
 
     @Exclude
     @Transient
@@ -70,17 +77,30 @@ data class QrNote(
     }
 
     suspend internal fun retrieveImageFiles(cachedFileHandler: CachedFileHandler): List<File> {
+        val images = cachedFileHandler.getFileNamesFromCloud(this, CachedFileHandler.Category.Images)
 
-        val images =
-            cachedFileHandler.getFileNamesFromCloud(this, CachedFileHandler.Category.Images)
+        // Reset stats before retrieving
+        pictureCount = 0
+        picsLoadedFromCache = 0
+        picsLoadedFromFirestore = 0
 
         return images.mapNotNull { imageName ->
             try {
-                cachedFileHandler.getFileFromCacheOrCloud(
+                val (file, fromCache) = cachedFileHandler.getFileFromCacheOrCloud(
                     this,
                     CachedFileHandler.Category.Images,
                     imageName
                 )
+
+                if (file != null) {
+                    pictureCount++
+                    if (fromCache) {
+                        picsLoadedFromCache++
+                    } else {
+                        picsLoadedFromFirestore++
+                    }
+                }
+                file
             } catch (e: IOException) {
                 Log.e(
                     "QrNote",
@@ -92,24 +112,38 @@ data class QrNote(
         }
     }
 
-    internal fun retrieveImageFilesOld(): List<File> {
-        val subfolderDir = ImageSubfolder()
+    suspend internal fun retrieveDocumentFiles(cachedFileHandler: CachedFileHandler): List<File> {
+        val documentFileNames = cachedFileHandler.getFileNamesFromCloud(this, CachedFileHandler.Category.Documents)
 
-        if (!subfolderDir.exists()) {
-            return emptyList()
-        }
-        val imageExtensions = setOf("jpg", "jpeg", "png", "gif", "bmp", "webp")
-        // Filter files in the subfolder by image extensions
-        return try {
-            val files = subfolderDir.listFiles()
-            files?.filter { file ->
-                file.isFile && imageExtensions.any { ext ->
-                    file.name.endsWith(".$ext", ignoreCase = true)
+        // Reset stats before retrieving
+        docsLoadedFromCache = 0
+        docsLoadedFromFirestore = 0
+
+        return documentFileNames.mapNotNull { document ->
+            try {
+                val (file, fromCache) = cachedFileHandler.getFileFromCacheOrCloud(
+                    this,
+                    CachedFileHandler.Category.Documents,
+                    document
+                )
+
+                if (file != null) {
+
+                    if (fromCache) {
+                        docsLoadedFromCache++
+                    } else {
+                        docsLoadedFromFirestore++
+                    }
                 }
-            } ?: emptyList()
-        } catch (e: Exception) {
-             Log.e("QrNote", "Error accessing files in ${subfolderDir.absolutePath} for note '$documentId' in retrieveImageFilesOld.", e)
-            emptyList()
+                file
+            } catch (e: IOException) {
+                Log.e(
+                    "QrNote",
+                    "Failed to retrieve document file '$document' for note '$documentId' at QrNote.retrieveDocumentFiles",
+                    e
+                )
+                null
+            }
         }
     }
 }

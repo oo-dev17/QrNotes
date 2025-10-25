@@ -10,13 +10,12 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="top"
-        android:foreground="@color/white"
         android:padding="15dp"
         android:scaleType="fitCenter"
         app:srcCompat="@drawable/haus" />
     <TextView
+        android:id="@+id/fullscreenImageViewText"
         android:layout_gravity="bottom"
         android:layout_width="100dp"
-        android:text="ABCDEF!"
         android:layout_height="40dp"/>
 </FrameLayout>
