@@ -2,27 +2,21 @@ package com.oo_dev17.qrnotes
 
 import android.content.Context
 import android.net.Uri
-import com.google.android.material.snackbar.Snackbar
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.nio.file.Paths
 
 class FileCache(val context: Context) {
 
     fun storeFileInCache(
-        category: String,
+        documentId: String,
+        category: CachedFileHandler.Category,
         fileName: String,
         fileContent: ByteArray
     ) {
-        // Get the cache directory and create a subfolder for the category
-        val categoryDir = File(context.cacheDir, category)
-        if (!categoryDir.exists()) {
-            categoryDir.mkdirs() // Create the category directory if it doesn't exist
-        }
 
         // Create the file within the category subfolder
-        val cacheFile = File(categoryDir, fileName)
+        val cacheFile = MakeFile(documentId, category, fileName)
         try {
             FileOutputStream(cacheFile).use { fos ->
                 fos.write(fileContent)
@@ -33,13 +27,27 @@ class FileCache(val context: Context) {
         }
     }
 
-    fun storeFileInCache(category: String, fileName: String, fileUri: Uri) {
-        val categoryDir = File(context.cacheDir, category)
-        if (!categoryDir.exists()) {
-            categoryDir.mkdirs()
+    fun storeFileInCache(
+        documentId: String,
+        category: CachedFileHandler.Category,
+        fileName: String,
+        file: File
+    ) {
+        val cacheFile = MakeFile(documentId, category, fileName)
+        try {
+            file.copyTo(cacheFile)
+        } catch (e: IOException) {
+            e.printStackTrace()
         }
+    }
 
-        val cacheFile = File(categoryDir, fileName)
+    fun storeFileInCache(
+        documentId: String,
+        category: CachedFileHandler.Category,
+        fileName: String,
+        fileUri: Uri
+    ) {
+        val cacheFile = MakeFile(documentId, category, fileName)
         try {
             context.contentResolver.openInputStream(fileUri)?.use { input ->
                 FileOutputStream(cacheFile).use { output ->
@@ -52,12 +60,12 @@ class FileCache(val context: Context) {
     }
 
     fun getFileFromCache(
-        noteId: String,
+        documentId: String,
         category: CachedFileHandler.Category,
         fileName: String
     ): File? {
         // Get the cache directory and the subfolder for the category
-        val cacheFile = File(combinePaths(noteId, category.name), fileName)
+        val cacheFile = MakeFile(documentId, category, fileName)
 
         // Check if the file exists within the category subfolder
         if (cacheFile.exists()) {
@@ -71,17 +79,13 @@ class FileCache(val context: Context) {
         return null // File doesn't exist or an error occurred
     }
 
-    fun getPathForFileFromCache(category: String, fileName: String): Pair<File, Boolean> {
-        val categoryDir = File(context.cacheDir, category)
-        if (!categoryDir.exists()) {
-            categoryDir.mkdirs()
-        }
-        val cacheFile = File(categoryDir, fileName)
-        val exists = cacheFile.exists()
-        if (!exists) {
-            cacheFile.createNewFile()
-        }
-        return Pair(cacheFile, exists)
+    fun getPathForFileFromCache(
+        documentId: String,
+        category: CachedFileHandler.Category,
+        fileName: String
+    ): Pair<File, Boolean> {
+        val file = MakeFile(documentId, category, fileName)
+        return Pair(file, file.exists())
     }
 
     fun clearCache() {
@@ -89,16 +93,23 @@ class FileCache(val context: Context) {
         cacheDir.deleteRecursively()
     }
 
-    fun FileExists(category: CachedFileHandler.Category, fileName: String): Boolean {
+    fun FileExists(
+        documentId: String,
+        category: CachedFileHandler.Category,
+        fileName: String
+    ): Boolean {
         // Get the cache directory and the subfolder for the category
-        val categoryDir = File(context.cacheDir, category.name)
-        val cacheFile = File(categoryDir, fileName)
-        return cacheFile.exists()
+        val file = MakeFile(documentId, category, fileName)
+        return file.exists()
     }
 
-    fun deleteFileFromCache(documentId: String, fileName: String) {
-        val categoryDir = File(context.cacheDir, documentId)
-        val cacheFile = File(categoryDir, fileName)
+    fun deleteFileFromCache(
+        documentId: String,
+        category: CachedFileHandler.Category,
+        fileName: String
+    ) {
+
+        val cacheFile = MakeFile(documentId, category, fileName)
         try {
             cacheFile.delete()
         } catch (e: Exception) {
@@ -106,18 +117,15 @@ class FileCache(val context: Context) {
         }
     }
 
-    fun combinePaths(vararg paths: String): String {
-        return paths.filter { it.isNotBlank() }.joinToString("/") { it.trim('/') }
-    }
-
-    fun createFileInCache(
+    fun MakeFile(
         documentId: String,
         category: CachedFileHandler.Category,
-        filename: String
+        fileName: String
     ): File {
-        val folder = File(context.cacheDir,combinePaths( documentId, category.name))
-        if (!folder.exists())
-            folder.mkdir()
-        return File(folder, filename)
+        val folder = File(context.cacheDir, documentId)
+        if (!folder.exists()) folder.mkdir()
+        val folder2 = File(folder, category.name)
+        if (!folder2.exists()) folder2.mkdir()
+        return File(folder2, fileName)
     }
 }

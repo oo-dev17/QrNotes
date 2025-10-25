@@ -29,12 +29,13 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
         category: Category,
         filename: String
     ): Pair<File?, Boolean> {
-        if (fileCache.FileExists(Category.Images, filename)) {
+        if (fileCache.FileExists(qrNote.documentId!!,Category.Images, filename)) {
             return Pair(fileCache.getFileFromCache(qrNote.documentId!!, category, filename), true)
         } else {
             return try {
-                val file = fileCache.createFileInCache(qrNote.documentId!!, category, filename)
-                if (file.exists()) return Pair(file, true)
+                var file=fileCache.MakeFile(qrNote.documentId!!, category, filename)
+                if (file.exists())
+                    return Pair(file, true)
 
                 // Ensure the parent directory exists before attempting to download.
                 file.parentFile?.mkdirs()
@@ -70,11 +71,18 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
 
     fun uploadToCloud(qrNote: QrNote, file: File, category: Category) {
         storageRef.child(qrNote.documentId!!).child(category.name).child(file.name)
-            .putFile(file.toUri()).addOnSuccessListener {
+            .putFile(file.toUri()).addOnSuccessListener {s->
                 println("Upload successful: " + file.name)
+                Log.i("CachedFileHandler",
+                    """uploadToCloud success (${file.length() / 1000.0} kb):${file.name} transferred: ${s.bytesTransferred}"""
+                )
             }.addOnFailureListener { fail ->
                 println("Upload failed: " + fail.message)
+                Log.e("CachedFileHandler", "uploadToCloud failed: " + fail.message)
             }
+    }
+    fun putToCache(qrNote: QrNote, file: File, category: Category) {
+        fileCache.storeFileInCache(qrNote.documentId!!, category, file.name, file)
     }
 
     fun deleteFileFromCloud(qrNote: QrNote, name: String, category: Category) {

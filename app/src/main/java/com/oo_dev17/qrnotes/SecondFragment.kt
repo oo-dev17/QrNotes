@@ -25,19 +25,18 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
-import com.google.firebase.storage.StorageReference
 import com.google.firebase.storage.storage
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -47,6 +46,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 
 /**
  * A simple [Fragment] subclass as the second destination in the navigation.
@@ -156,7 +156,6 @@ class SecondFragment : Fragment() {
         scanFileAfterDelete(file)
     }
 
-
     private fun moveOrphanedPdfsToDocuments() {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -170,7 +169,8 @@ class SecondFragment : Fragment() {
 
                 if (pdfsInRoot.isNotEmpty()) {
                     Log.d("PdfMigration", "Found ${pdfsInRoot.size} orphaned PDF(s) to move.")
-                    val documentsFolderRef = noteRootRef.child(CachedFileHandler.Category.Documents.name)
+                    val documentsFolderRef =
+                        noteRootRef.child(CachedFileHandler.Category.Documents.name)
 
                     for (pdfRef in pdfsInRoot) {
                         val destinationRef = documentsFolderRef.child(pdfRef.name)
@@ -189,23 +189,26 @@ class SecondFragment : Fragment() {
 
                     // Refresh UI on the main thread
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(requireContext(), "Organized ${pdfsInRoot.size} PDF(s).", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            requireContext(),
+                            "Organized ${pdfsInRoot.size} PDF(s).",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         // Refresh the documents recycler view to show the moved files
                         SetupFilesRecycler()
                     }
                 } else {
                     Log.d("PdfMigration", "No orphaned PDFs found.")
                 }
-
             } catch (e: Exception) {
                 Log.e("PdfMigration", "Error moving orphaned PDFs: ${e.message}", e)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(requireContext(), "Error organizing PDFs.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Error organizing PDFs.", Toast.LENGTH_SHORT)
+                        .show()
                 }
             }
         }
     }
-
 
     private fun SetupImagesRecycler() {
         assertQrNoteIsInStorageRef()
@@ -341,9 +344,9 @@ class SecondFragment : Fragment() {
 
                 val stringList = listResult.map { it }.toMutableList()
                 var stringAdapter = DocumentAdapter(stringList)
-                if(stringAdapter.itemCount == 0)
-                    stringAdapter= DocumentAdapter(mutableListOf("No documents found"))
-                recyclerViewFiles.adapter =   stringAdapter
+                if (stringAdapter.itemCount == 0)
+                    stringAdapter = DocumentAdapter(mutableListOf("No documents found"))
+                recyclerViewFiles.adapter = stringAdapter
 
                 // Commenting out statistics part as properties don't exist on QrNote yet.
                 /*
@@ -358,7 +361,7 @@ class SecondFragment : Fragment() {
                     val fileCache = FileCache(requireContext())
                     // either for using a cached file or for downloading to it
                     val (localFile, exists) = fileCache.getPathForFileFromCache(
-                        qrNote?.documentId!!,
+                        qrNote?.documentId!!, CachedFileHandler.Category.Documents,
                         fileName
                     )
 
@@ -369,7 +372,8 @@ class SecondFragment : Fragment() {
                         )
                     } else {
                         val downloadRef =
-                            storageRef.child(qrNote!!.documentId!!).child(CachedFileHandler.Category.Documents.name).child(fileName)
+                            storageRef.child(qrNote!!.documentId!!)
+                                .child(CachedFileHandler.Category.Documents.name).child(fileName)
                         downloadRef.getFile(localFile).addOnSuccessListener {
                             // Local temp file has been created
                             OpenFile(fragment).openFileWithAssociatedApp(
@@ -392,14 +396,19 @@ class SecondFragment : Fragment() {
                         .setPositiveButton("Delete") { dialog, _ ->
                             // Delete the document
                             val fileCache = FileCache(requireContext())
-                            fileCache.deleteFileFromCache(qrNote?.documentId!!, fileName)
+                            fileCache.deleteFileFromCache(
+                                qrNote?.documentId!!,
+                                CachedFileHandler.Category.Documents,
+                                fileName
+                            )
                             try {
-                                storageRef.child(qrNote!!.documentId!!).child(CachedFileHandler.Category.Documents.name).child(fileName).delete()
+                                storageRef.child(qrNote!!.documentId!!)
+                                    .child(CachedFileHandler.Category.Documents.name)
+                                    .child(fileName).delete()
                                 // remove file entry from ui
                                 stringList.removeAt(position)
                                 stringAdapter.notifyDataSetChanged()
                                 dialog.dismiss()
-
                             } catch (e: Exception) {
                                 Snackbar.make(
                                     requireView(),
@@ -414,7 +423,6 @@ class SecondFragment : Fragment() {
                         }
                         .show()
                 }
-
             } catch (e: Exception) {
                 Log.e("SecondFragment", "Error setting up files recycler: ", e)
             }
@@ -531,20 +539,64 @@ class SecondFragment : Fragment() {
     private fun openCamera() {
         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
 
-        photoFile = createImageFile()
-        val photoURI: Uri = FileProvider.getUriForFile(
-            requireContext(), "${requireContext().packageName}.fileprovider", photoFile!!
-        )
-        intent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
-        if (intent.resolveActivity(requireActivity().packageManager) != null) {
-            startActivityForResult(intent, REQUEST_CODE_CAMERA)
-            imageAdapter.imageItems.add(0, ImageItem.FileImage(photoFile!!))
-            imageAdapter.notifyItemInserted(0)
-        } else {
-            Snackbar.make(requireView(), "No camera app found", Snackbar.LENGTH_SHORT).show()
+        try {
+            photoFile = createImageFile()
+        } catch (ex: IOException) {
+            // Log the error and show a message to the user
+            Log.e("SecondFragment", "Error creating image file", ex)
+            Snackbar.make(requireView(), "Could not create image file.", Snackbar.LENGTH_LONG).show()
+            return // Stop the process if the file can't be created
+        }
+        // Continue only if photoFile was created successfully
+        photoFile?.let { file ->
+            val photoURI: Uri = FileProvider.getUriForFile(
+                requireContext(),
+                "${requireContext().packageName}.fileprovider",
+                file
+            )
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+
+            // It's good practice to check if a camera app is available
+            if (intent.resolveActivity(requireActivity().packageManager) != null) {
+                // 2. Use the new launcher to start the activity
+                takePictureLauncher.launch(intent)
+            } else {
+                Snackbar.make(requireView(), "No camera app found", Snackbar.LENGTH_SHORT).show()
+            }
         }
     }
+    private val takePictureLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        // This is the callback that replaces onActivityResult
+        if (result.resultCode == Activity.RESULT_OK) {
+            val imageFile = photoFile
+            if (imageFile != null && imageFile.exists() && imageFile.length() > 0) {
 
+                // --- THIS IS THE CORRECT PLACE FOR YOUR LOGIC ---
+
+                // 1. Add the file to your UI adapter
+                imageAdapter.imageItems.add(0, ImageItem.FileImage(imageFile))
+                imageAdapter.notifyItemInserted(0)
+
+                // 2. Upload the file (which now has data) to Firebase
+                cachedFileHandler.uploadToCloud(
+                    qrNote!!,
+                    imageFile,
+                    CachedFileHandler.Category.Images
+                )
+
+                // 3. Put the file into your local cache
+                cachedFileHandler.putToCache(qrNote!!, imageFile, CachedFileHandler.Category.Images)
+
+                // 4. Notify the MediaStore so the image appears in the gallery
+                scanFile(imageFile)
+
+            } else {
+                Snackbar.make(requireView(), "Failed to save image.", Snackbar.LENGTH_SHORT).show()
+            }
+        }
+    }
     private fun scanFile(file: File) {
         MediaScannerConnection.scanFile(
             requireContext(), arrayOf(file.absolutePath), null
@@ -602,7 +654,7 @@ class SecondFragment : Fragment() {
                 cursor?.close()
 
                 val fileCache = FileCache(requireContext())
-                fileCache.storeFileInCache(qrNote?.documentId!!, fileName!!, uri)
+                fileCache.storeFileInCache(qrNote?.documentId!!, CachedFileHandler.Category.Documents, fileName!!, uri)
                 val documentRef = storageRef.child(qrNote!!.documentId + fileName)
                 val uploadTask = documentRef.putFile(uri)
                 uploadTask.addOnFailureListener { exception ->

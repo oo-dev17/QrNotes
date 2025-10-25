@@ -138,7 +138,7 @@ class MainActivity : AppCompatActivity() {
                 val builder = AlertDialog.Builder(this)
                 val formattedCacheSize = formatSize(totalCacheSizeBytes)
                 builder.setTitle("QrNote Options")
-                    .setMessage("Cache Size $formattedCacheSize\n" )
+                    .setMessage("Cache Size $formattedCacheSize\nCache folder: ${cacheDir.absolutePath}" )
                     .setNeutralButton("Clear Cache"){dialog, _ ->
                         val deleted = cacheDir.deleteRecursively()
                         if (deleted) {
