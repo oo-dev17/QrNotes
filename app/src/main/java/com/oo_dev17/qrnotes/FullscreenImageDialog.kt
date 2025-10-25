@@ -4,9 +4,9 @@ import com.oo_dev17.qrnotes.R
 import android.content.Context
 import android.os.Bundle
 import android.view.ViewGroup
-import android.widget.ImageView
 import android.widget.TextView
 import com.bumptech.glide.Glide
+import com.github.chrisbanes.photoview.PhotoView
 import java.io.File
 
 
@@ -20,7 +20,7 @@ class FullscreenImageDialog(context: Context, private val imageFile: File) : Dia
         window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-        val fullscreenImageView: ImageView = findViewById(R.id.fullscreenImageView)!!
+        val fullscreenImageView: PhotoView = findViewById(R.id.fullscreenImageView)!!
         val fullscreenImageViewText: TextView = findViewById(R.id.fullscreenImageViewText)!!
         fullscreenImageViewText.text = imageFile.name
 

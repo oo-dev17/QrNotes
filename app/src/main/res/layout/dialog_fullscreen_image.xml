@@ -5,12 +5,13 @@
     android:layout_height="match_parent"
     android:background="@android:color/black">
 
-    <ImageView
+    <com.github.chrisbanes.photoview.PhotoView
         android:id="@+id/fullscreenImageView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="top"
         android:padding="15dp"
+
         android:scaleType="fitCenter"
         app:srcCompat="@drawable/haus" />
     <TextView

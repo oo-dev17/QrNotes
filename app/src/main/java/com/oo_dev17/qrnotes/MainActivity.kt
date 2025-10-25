@@ -1,11 +1,14 @@
 package com.oo_dev17.qrnotes
 
+import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.fragment.NavHostFragment
@@ -17,6 +20,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
 import com.oo_dev17.qrnotes.databinding.ActivityMainBinding
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
     private lateinit var sharedDb: FirebaseFirestore
@@ -94,13 +98,63 @@ class MainActivity : AppCompatActivity() {
         menuInflater.inflate(R.menu.menu_main, menu)
         return true
     }
+    fun getCacheSize(context: Context): Long {
+        var size: Long = 0
+        // context.cacheDir gives you the path to your app's internal cache
+        val cacheDirectory: File = context.cacheDir
+        // walkTopDown() iterates through all files and subdirectories
+        // forEach adds up the size of each file
+        cacheDirectory.walkTopDown().forEach { file ->
+            if (file.isFile) {
+                size += file.length()
+            }
+        }
 
+        return size
+    }
+
+    /**
+     * Formats the cache size from bytes into a human-readable string (KB, MB, GB).
+     * @param sizeInBytes The size in bytes.
+     * @return A formatted string like "12.34 MB".
+     */
+    fun formatSize(sizeInBytes: Long): String {
+        if (sizeInBytes < 1024) return "$sizeInBytes B"
+        val kb = sizeInBytes / 1024
+        if (kb < 1024) return "$kb KB"
+        val mb = kb / 1024
+        if (mb < 1024) return String.format("%.2f MB", mb.toFloat())
+        val gb = mb / 1024
+        return String.format("%.2f GB", gb.toFloat())
+    }
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         return when (item.itemId) {
-            R.id.action_settings -> true
+            R.id.action_settings -> {
+                val totalCacheSizeBytes = getCacheSize(this)
+
+                val builder = AlertDialog.Builder(this)
+                val formattedCacheSize = formatSize(totalCacheSizeBytes)
+                builder.setTitle("QrNote Options")
+                    .setMessage("Cache Size $formattedCacheSize\n" )
+                    .setNeutralButton("Clear Cache"){dialog, _ ->
+                        val deleted = cacheDir.deleteRecursively()
+                        if (deleted) {
+                            Toast.makeText(this, "Cache cleared successfully", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this, "Failed to clear cache", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .setNegativeButton("Cancel") { dialog, _ ->
+                        dialog.dismiss()
+                    }
+                    .show()
+                /*
+                val intent = Intent(this, SettingsActivity::class.java)
+                startActivity(intent)*/
+                true}
             else -> super.onOptionsItemSelected(item)
 
         }
