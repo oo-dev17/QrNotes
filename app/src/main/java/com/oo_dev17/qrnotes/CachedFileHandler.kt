@@ -33,11 +33,11 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
     ): Pair<File?, Boolean> {
         assert(documentId.isNotEmpty())
 
-        if (FileExists(documentId, Category.Images, filename)) {
-            return Pair(getFileFromCache(documentId, category, filename), true)
+                val file = MakeFile(documentId, category, filename)
+        if (file.exists()) {
+            return Pair(file, true)
         } else {
             return try {
-                val file = MakeFile(documentId, category, filename)
                 if (file.exists())
                     return Pair(file, true)
 
@@ -47,7 +47,7 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
                 storageRef.child(documentId).child(category.name).child(filename)
                     .getFile(file)
                     .await()
-                storeFileInCache(documentId, category, filename, file)
+                copyFileToCache(documentId, category, filename, file)
                 Pair(file, false)
             } catch (exception: Exception) {
                 println("Error getting for docID:'${documentId}' cat: ${category.name} '$filename' from cloud: " + exception.message)
@@ -70,11 +70,7 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
             }
     }
 
-    fun putToCache(qrNote: QrNote, file: File, category: Category) {
-        storeFileInCache(qrNote.documentId!!, category, file.name, file)
-    }
-
-    fun storeFileInCache(
+    fun copyFileToCache(
         documentId: String,
         category: Category,
         fileName: String,
@@ -107,25 +103,7 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
         return cacheFile
     }
 
-    fun getFileFromCache(
-        documentId: String,
-        category: Category,
-        fileName: String
-    ): File? {
-        // Get the cache directory and the subfolder for the category
-        val cacheFile = MakeFile(documentId, category, fileName)
 
-        // Check if the file exists within the category subfolder
-        if (cacheFile.exists()) {
-            try {
-                return cacheFile
-            } catch (e: IOException) {
-                // Handle the exception
-                e.printStackTrace()
-            }
-        }
-        return null // File doesn't exist or an error occurred
-    }
 
 
 /*
@@ -134,15 +112,7 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
         cacheDir.deleteRecursively()
     }
 */
-    fun FileExists(
-        documentId: String,
-        category: Category,
-        fileName: String
-    ): Boolean {
-        // Get the cache directory and the subfolder for the category
-        val file = MakeFile(documentId, category, fileName)
-        return file.exists()
-    }
+
 
     fun deleteFileFromBoth(
         documentId: String,

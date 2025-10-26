@@ -61,6 +61,7 @@ class SecondFragment : Fragment() {
     // Create a storage reference from our app
     private val storageRef = Firebase.storage.reference
     private val sharedViewModel: SharedViewModel by activityViewModels()
+
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
@@ -231,18 +232,25 @@ class SecondFragment : Fragment() {
                         val builder = android.app.AlertDialog.Builder(requireContext())
                         builder.setTitle("QrNote Options")
                             .setMessage("What do you want to do with img ${imageItem.file.name} ?")
-                            .setNeutralButton("Make gallery picture"){ dialog, _ ->
+                            .setNeutralButton("Make gallery picture") { dialog, _ ->
                                 val noteId = qrNote!!.documentId!!
                                 val newGalleryPicName = imageItem.file.name
                                 Firebase.firestore.collection("qrNotes").document(noteId)
                                     .update("galleryPic", newGalleryPicName)
                                     .addOnSuccessListener {
                                         // --- THIS IS THE TRIGGER ---
-                                        sharedViewModel.requestThumbnailRefresh(noteId, newGalleryPicName)
-                                        Toast.makeText(requireContext(), "Gallery picture updated!", Toast.LENGTH_SHORT).show()
+                                        sharedViewModel.requestThumbnailRefresh(
+                                            noteId,
+                                            newGalleryPicName
+                                        )
+                                        Toast.makeText(
+                                            requireContext(),
+                                            "Gallery picture updated!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                         dialog.dismiss()
                                     }
-                               }
+                            }
                             .setPositiveButton("Delete") { dialog, _ ->
                                 // Delete the document
                                 // val fileCache = FileCache(requireContext())
@@ -365,7 +373,7 @@ class SecondFragment : Fragment() {
                         .setMessage("What do you want to do with doc $fileName ?")
                         .setPositiveButton("Delete") { dialog, _ ->
                             // Delete the document
-                            val fileCache = CachedFileHandler(storageRef,requireContext())
+                            val fileCache = CachedFileHandler(storageRef, requireContext())
                             fileCache.deleteFileFromBoth(
                                 qrNote?.documentId!!,
                                 CachedFileHandler.Category.Documents,
@@ -559,7 +567,12 @@ class SecondFragment : Fragment() {
                 )
 
                 // 3. Put the file into your local cache
-                cachedFileHandler.putToCache(qrNote!!, imageFile, CachedFileHandler.Category.Images)
+                cachedFileHandler.copyFileToCache(
+                    qrNote!!.documentId!!,
+                    CachedFileHandler.Category.Images,
+                    imageFile.name,
+                    imageFile
+                )
 
                 // 4. Notify the MediaStore so the image appears in the gallery
                 scanFile(imageFile)
@@ -578,7 +591,6 @@ class SecondFragment : Fragment() {
         }
     }
 
-
     private val REQUEST_CODE_PICK_IMAGE = 101
 
     private fun openGallery() {
@@ -592,73 +604,73 @@ class SecondFragment : Fragment() {
         getContext()?.let { context ->
             // This block will only execute if the context is not null
             // ... proceed with your logic using 'context'
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_CODE_PICK_IMAGE && resultCode == Activity.RESULT_OK) {
-            val selectedImageUri: Uri? = data?.data
-            if (selectedImageUri != null) {
-                // Load the selected image into an ImageView or process it
-                loadSelectedImage(selectedImageUri)
-            }
-        }
-        if (requestCode == REQUEST_CODE_CAMERA && resultCode == Activity.RESULT_OK) {
-            val imageBitmap = data?.extras?.get("data") as? Bitmap
-            if (imageBitmap != null) {
-                // Display the captured image
-                loadCapturedImage(imageBitmap)
-            }
-            val imageFile = photoFile
-            if (imageFile != null && imageFile.exists()) {
-                // Notify the MediaStore about the new file
-                scanFile(imageFile)
-            }
-        }
-        if (requestCode == REQUEST_CODE_PICK_DOCUMENT && resultCode == Activity.RESULT_OK) {
-            val uri = data?.data // This is the selected file's URI
-            if (uri != null && qrNote != null) {
-                val cursor = context.contentResolver.query(uri, null, null, null, null)
-                cursor?.moveToFirst()
-                val fileName = cursor?.getString(cursor.getColumnIndexOrThrow("_display_name"))
-                cursor?.close()
-
-                val fileCache = CachedFileHandler(storageRef,context)
-                val cachedFile = fileCache.storeFileInCache(
-                    qrNote!!.documentId!!,
-                    CachedFileHandler.Category.Documents,
-                    fileName!!,
-                    uri
-                )
-                if (!cachedFile.exists()) {
-                    Toast.makeText(
-                        context,
-                        "Failed to save document locally.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    return // Stop if local save failed
+            super.onActivityResult(requestCode, resultCode, data)
+            if (requestCode == REQUEST_CODE_PICK_IMAGE && resultCode == Activity.RESULT_OK) {
+                val selectedImageUri: Uri? = data?.data
+                if (selectedImageUri != null) {
+                    // Load the selected image into an ImageView or process it
+                    loadSelectedImage(selectedImageUri)
                 }
+            }
+            if (requestCode == REQUEST_CODE_CAMERA && resultCode == Activity.RESULT_OK) {
+                val imageBitmap = data?.extras?.get("data") as? Bitmap
+                if (imageBitmap != null) {
+                    // Display the captured image
+                    loadCapturedImage(imageBitmap)
+                }
+                val imageFile = photoFile
+                if (imageFile != null && imageFile.exists()) {
+                    // Notify the MediaStore about the new file
+                    scanFile(imageFile)
+                }
+            }
+            if (requestCode == REQUEST_CODE_PICK_DOCUMENT && resultCode == Activity.RESULT_OK) {
+                val uri = data?.data // This is the selected file's URI
+                if (uri != null && qrNote != null) {
+                    val cursor = context.contentResolver.query(uri, null, null, null, null)
+                    cursor?.moveToFirst()
+                    val fileName = cursor?.getString(cursor.getColumnIndexOrThrow("_display_name"))
+                    cursor?.close()
 
-                val documentRef = storageRef.child(qrNote!!.documentId + fileName)
-                val uploadTask = documentRef.putFile(uri)
-
-                uploadTask.addOnFailureListener { exception ->
-                    Toast.makeText(
-                        context,
-                        "Upload failed: " + exception.message,
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }.addOnSuccessListener { taskSnapshot ->
-                    Toast.makeText(context, "Upload successful", Toast.LENGTH_SHORT).show()
-                    if (::stringAdapter.isInitialized) {
-                        stringAdapter.stringList.add(fileName)
-                        stringAdapter.notifyDataSetChanged()
-                    } else {
+                    val fileCache = CachedFileHandler(storageRef, context)
+                    val cachedFile = fileCache.storeFileInCache(
+                        qrNote!!.documentId!!,
+                        CachedFileHandler.Category.Documents,
+                        fileName!!,
+                        uri
+                    )
+                    if (!cachedFile.exists()) {
                         Toast.makeText(
                             context,
-                            "stringAdapter not initialized",
+                            "Failed to save document locally.",
                             Toast.LENGTH_SHORT
                         ).show()
+                        return // Stop if local save failed
+                    }
+
+                    val documentRef = storageRef.child(qrNote!!.documentId + fileName)
+                    val uploadTask = documentRef.putFile(uri)
+
+                    uploadTask.addOnFailureListener { exception ->
+                        Toast.makeText(
+                            context,
+                            "Upload failed: " + exception.message,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }.addOnSuccessListener { taskSnapshot ->
+                        Toast.makeText(context, "Upload successful", Toast.LENGTH_SHORT).show()
+                        if (::stringAdapter.isInitialized) {
+                            stringAdapter.stringList.add(fileName)
+                            stringAdapter.notifyDataSetChanged()
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "stringAdapter not initialized",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     }
                 }
-        }
             }
         }
     }
