@@ -1,14 +1,16 @@
 package com.oo_dev17.qrnotes
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.core.net.toUri
 import com.google.firebase.storage.StorageReference
 import kotlinx.coroutines.tasks.await
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 class CachedFileHandler(private val storageRef: StorageReference, val context: Context) {
-    val fileCache = FileCache(context)
 
     suspend fun getFileNamesFromCloud(qrNote: QrNote, category: Category): List<String> {
         return try {
@@ -25,55 +27,41 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
     }
 
     suspend fun getFileFromCacheOrCloud(
-        qrNote: QrNote,
+        documentId: String,
         category: Category,
         filename: String
     ): Pair<File?, Boolean> {
-        if (fileCache.FileExists(qrNote.documentId!!,Category.Images, filename)) {
-            return Pair(fileCache.getFileFromCache(qrNote.documentId!!, category, filename), true)
+        assert(documentId.isNotEmpty())
+
+        if (FileExists(documentId, Category.Images, filename)) {
+            return Pair(getFileFromCache(documentId, category, filename), true)
         } else {
             return try {
-                var file=fileCache.MakeFile(qrNote.documentId!!, category, filename)
+                val file = MakeFile(documentId, category, filename)
                 if (file.exists())
                     return Pair(file, true)
 
                 // Ensure the parent directory exists before attempting to download.
                 file.parentFile?.mkdirs()
 
-                storageRef.child(qrNote.documentId!!).child(category.name).child(filename)
+                storageRef.child(documentId).child(category.name).child(filename)
                     .getFile(file)
                     .await()
+                storeFileInCache(documentId, category, filename, file)
                 Pair(file, false)
             } catch (exception: Exception) {
-                println("Error getting for docID:'${qrNote.documentId}' cat: ${category.name} '$filename' from cloud: " + exception.message)
+                println("Error getting for docID:'${documentId}' cat: ${category.name} '$filename' from cloud: " + exception.message)
                 Pair(null, false)
             }
         }
     }
 
-    suspend fun fileExists(qrNote: QrNote, file: File, category: Category): Boolean {
-        return fileExists(qrNote, file.name, category)
-    }
-
-    suspend fun fileExists(qrNote: QrNote, fileName: String, category: Category): Boolean {
-        return try {
-            val listResult = storageRef
-                .child(qrNote.documentId!!)
-                .child(category.name)
-                .listAll()
-                .await() // Wait for the async operation
-
-            fileName in listResult.items.map { it.name }
-        } catch (e: Exception) {
-            false // Return false if there's any error (or throw to propagate)
-        }
-    }
-
     fun uploadToCloud(qrNote: QrNote, file: File, category: Category) {
         storageRef.child(qrNote.documentId!!).child(category.name).child(file.name)
-            .putFile(file.toUri()).addOnSuccessListener {s->
+            .putFile(file.toUri()).addOnSuccessListener { s ->
                 println("Upload successful: " + file.name)
-                Log.i("CachedFileHandler",
+                Log.i(
+                    "CachedFileHandler",
                     """uploadToCloud success (${file.length() / 1000.0} kb):${file.name} transferred: ${s.bytesTransferred}"""
                 )
             }.addOnFailureListener { fail ->
@@ -81,21 +69,139 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
                 Log.e("CachedFileHandler", "uploadToCloud failed: " + fail.message)
             }
     }
+
     fun putToCache(qrNote: QrNote, file: File, category: Category) {
-        fileCache.storeFileInCache(qrNote.documentId!!, category, file.name, file)
+        storeFileInCache(qrNote.documentId!!, category, file.name, file)
     }
 
-    fun deleteFileFromCloud(qrNote: QrNote, name: String, category: Category) {
+    fun storeFileInCache(
+        documentId: String,
+        category: Category,
+        fileName: String,
+        file: File
+    ) {
+        val cacheFile = MakeFile(documentId, category, fileName)
+        try {
+            file.copyTo(cacheFile)
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+    }
 
-        storageRef.child(qrNote.documentId!!).child(category.name).child(name).delete()
-            .addOnFailureListener { fail -> }
-        Log.d(
+    fun storeFileInCache(
+        documentId: String,
+        category: Category,
+        fileName: String,
+        fileUri: Uri
+    ): File {
+        val cacheFile = MakeFile(documentId, category, fileName)
+        try {
+            context.contentResolver.openInputStream(fileUri)?.use { input ->
+                FileOutputStream(cacheFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+        return cacheFile
+    }
+
+    fun getFileFromCache(
+        documentId: String,
+        category: Category,
+        fileName: String
+    ): File? {
+        // Get the cache directory and the subfolder for the category
+        val cacheFile = MakeFile(documentId, category, fileName)
+
+        // Check if the file exists within the category subfolder
+        if (cacheFile.exists()) {
+            try {
+                return cacheFile
+            } catch (e: IOException) {
+                // Handle the exception
+                e.printStackTrace()
+            }
+        }
+        return null // File doesn't exist or an error occurred
+    }
+
+    fun getPathForFileFromCache(
+        documentId: String,
+        category: Category,
+        fileName: String
+    ): Pair<File, Boolean> {
+        val file = MakeFile(documentId, category, fileName)
+        return Pair(file, file.exists())
+    }
+
+    fun clearCache() {
+        val cacheDir = context.cacheDir
+        cacheDir.deleteRecursively()
+    }
+
+    fun FileExists(
+        documentId: String,
+        category: Category,
+        fileName: String
+    ): Boolean {
+        // Get the cache directory and the subfolder for the category
+        val file = MakeFile(documentId, category, fileName)
+        return file.exists()
+    }
+
+    fun deleteFileFromBoth(
+        documentId: String,
+        category: Category,
+        fileName: String
+    ) {
+        deleteFileFromCache(documentId, category, fileName)
+        deleteFileFromCloud(documentId, category, fileName)
+    }
+
+    fun deleteFileFromCloud(documentId: String, category: Category, name: String) {
+
+        storageRef.child(documentId).child(category.name).child(name).delete()
+            .addOnFailureListener { fail ->
+
+        Log.e(
             "CachedFileHandler",
-            "Failed to delete file: deleteFileFromCloud: docId: '${qrNote.documentId}' cat:${category.name} name: '$name'"
+            "Failed to delete file: deleteFileFromCloud: docId: '${documentId}' cat:${category.name} name: '$name': ${fail.message}"
         )
+            }
     }
 
-    public enum class Category {
+    fun deleteFileFromCache(
+        documentId: String,
+        category: Category,
+        fileName: String
+    ) {
+
+        val cacheFile = MakeFile(documentId, category, fileName)
+        try {
+            cacheFile.delete()
+        } catch (e: Exception) {
+            Log.e(
+                "CachedFileHandler",
+                "Failed to delete file: deleteFileFromCache: docId: '${documentId}' cat:${category.name} name: '$fileName': $e"
+            )
+        }
+    }
+
+    fun MakeFile(
+        documentId: String,
+        category: Category,
+        fileName: String
+    ): File {
+        val folder = File(context.cacheDir, documentId)
+        if (!folder.exists()) folder.mkdir()
+        val folder2 = File(folder, category.name)
+        if (!folder2.exists()) folder2.mkdir()
+        return File(folder2, fileName)
+    }
+
+    enum class Category {
         Images, Documents
     }
 }

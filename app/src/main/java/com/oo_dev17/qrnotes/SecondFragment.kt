@@ -4,8 +4,6 @@ import FullscreenImageDialog
 import ImageAdapter
 import android.Manifest
 import android.app.Activity
-import android.content.ContentResolver
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -31,6 +29,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -58,11 +57,10 @@ class SecondFragment : Fragment() {
     private lateinit var stringAdapter: DocumentAdapter
     private var qrNote: QrNote? = null
     private var _binding: FragmentSecondBinding? = null
-    var fileCache: FileCache? = null
 
     // Create a storage reference from our app
     private val storageRef = Firebase.storage.reference
-
+    private val sharedViewModel: SharedViewModel by activityViewModels()
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
@@ -117,43 +115,13 @@ class SecondFragment : Fragment() {
         Linkify.addLinks(textviewSecond, Linkify.WEB_URLS)
         try {
             checkStoragePermission(false)
-            SetupImagesRecycler()
-            SetupFilesRecycler()
+            setupImagesRecycler()
+            setupFilesRecycler()
         } catch (e: Exception) {
             Log.e("Firestore", "Error getting QrNotes", e)
         }
 
         return binding.root
-    }
-
-    private fun deleteImage(context: Context, imageUri: Uri) {
-        val contentResolver: ContentResolver = context.contentResolver
-
-        val file: File = File(java.lang.String.valueOf(imageUri))
-        try {
-            // Delete using the Media Store URI
-            val rowsDeleted = contentResolver.delete(imageUri, null, null)
-
-            if (rowsDeleted > 0) {
-                println("Image deleted successfully.")
-            } else {
-                println("Image deletion failed or image not found.")
-            }
-        } catch (e: SecurityException) {
-            println("Permission error: " + e.message)
-            if (file.exists()) {
-                if (file.delete()) {
-                    println("Image deleted successfully.")
-                } else {
-                    println("Image deletion failed or image not found.")
-                }
-            } else {
-                println("Image not found.${file.absolutePath}")
-            }
-        } catch (e: Exception) {
-            println("Error deleting image: " + e.message)
-        }
-        scanFileAfterDelete(file)
     }
 
     private fun moveOrphanedPdfsToDocuments() {
@@ -195,7 +163,7 @@ class SecondFragment : Fragment() {
                             Toast.LENGTH_SHORT
                         ).show()
                         // Refresh the documents recycler view to show the moved files
-                        SetupFilesRecycler()
+                        setupFilesRecycler()
                     }
                 } else {
                     Log.d("PdfMigration", "No orphaned PDFs found.")
@@ -210,7 +178,7 @@ class SecondFragment : Fragment() {
         }
     }
 
-    private fun SetupImagesRecycler() {
+    private fun setupImagesRecycler() {
         assertQrNoteIsInStorageRef()
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -263,6 +231,18 @@ class SecondFragment : Fragment() {
                         val builder = android.app.AlertDialog.Builder(requireContext())
                         builder.setTitle("QrNote Options")
                             .setMessage("What do you want to do with img ${imageItem.file.name} ?")
+                            .setNeutralButton("Make gallery picture"){ dialog, _ ->
+                                val noteId = qrNote!!.documentId!!
+                                val newGalleryPicName = imageItem.file.name
+                                Firebase.firestore.collection("qrNotes").document(noteId)
+                                    .update("galleryPic", newGalleryPicName)
+                                    .addOnSuccessListener {
+                                        // --- THIS IS THE TRIGGER ---
+                                        sharedViewModel.requestThumbnailRefresh(noteId, newGalleryPicName)
+                                        Toast.makeText(requireContext(), "Gallery picture updated!", Toast.LENGTH_SHORT).show()
+                                        dialog.dismiss()
+                                    }
+                               }
                             .setPositiveButton("Delete") { dialog, _ ->
                                 // Delete the document
                                 // val fileCache = FileCache(requireContext())
@@ -274,10 +254,10 @@ class SecondFragment : Fragment() {
                                     imageAdapter.imageItems.removeAt(position)
                                     imageAdapter.notifyItemRemoved(position)
 
-                                    cachedFileHandler.deleteFileFromCloud(
-                                        qrNote!!,
-                                        imageItem.file.name,
-                                        CachedFileHandler.Category.Images
+                                    cachedFileHandler.deleteFileFromBoth(
+                                        qrNote!!.documentId!!,
+                                        CachedFileHandler.Category.Images,
+                                        imageItem.file.name
                                     )
                                     dialog.dismiss()
                                 } catch (e: Exception) {
@@ -321,7 +301,7 @@ class SecondFragment : Fragment() {
             }
     }
 
-    private fun SetupFilesRecycler() {
+    private fun setupFilesRecycler() {
         assertQrNoteIsInStorageRef()
         // Capture fragment reference as 'fragment' to avoid confusion with coroutine 'this'
 
@@ -340,7 +320,7 @@ class SecondFragment : Fragment() {
 
                 // Set up the RecyclerView with a horizontal LinearLayoutManager
                 recyclerViewFiles.layoutManager =
-                    LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+                    LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false)
 
                 val stringList = listResult.map { it }.toMutableList()
                 var stringAdapter = DocumentAdapter(stringList)
@@ -358,45 +338,35 @@ class SecondFragment : Fragment() {
                 }
                 */
                 stringAdapter.onItemClick = { fileName ->
-                    val fileCache = FileCache(requireContext())
-                    // either for using a cached file or for downloading to it
-                    val (localFile, exists) = fileCache.getPathForFileFromCache(
-                        qrNote?.documentId!!, CachedFileHandler.Category.Documents,
-                        fileName
-                    )
-
-                    if (exists) {
-                        OpenFile(fragment).openFileWithAssociatedApp(
-                            localFile,
-                            requireContext()
+                    lifecycleScope.launch {
+                        val fileCache = CachedFileHandler(storageRef, requireContext())
+                        val (file, _) = fileCache.getFileFromCacheOrCloud(
+                            qrNote!!.documentId!!,
+                            CachedFileHandler.Category.Documents, fileName
                         )
-                    } else {
-                        val downloadRef =
-                            storageRef.child(qrNote!!.documentId!!)
-                                .child(CachedFileHandler.Category.Documents.name).child(fileName)
-                        downloadRef.getFile(localFile).addOnSuccessListener {
-                            // Local temp file has been created
-                            OpenFile(fragment).openFileWithAssociatedApp(
-                                localFile!!,
-                                requireContext()
-                            )
-                        }.addOnFailureListener { fail ->
+                        if (file == null) {
                             Toast.makeText(
                                 requireContext(),
-                                "Download failed: " + fail.message,
+                                "Failed to load or download file $fileName.",
                                 Toast.LENGTH_SHORT
                             ).show()
+
+                            // This is how you return from a lambda.
+                            // 'return@launch' exits the coroutine block.
+                            return@launch
                         }
+                        OpenFile(fragment).openFileWithAssociatedApp(file, requireContext())
+
                     }
                 }
                 stringAdapter.onItemLongClick = { fileName, position ->
                     val builder = android.app.AlertDialog.Builder(requireContext())
                     builder.setTitle("QrNote Options")
-                        .setMessage("What do you want to do with doc ${fileName} ?")
+                        .setMessage("What do you want to do with doc $fileName ?")
                         .setPositiveButton("Delete") { dialog, _ ->
                             // Delete the document
-                            val fileCache = FileCache(requireContext())
-                            fileCache.deleteFileFromCache(
+                            val fileCache = CachedFileHandler(storageRef,requireContext())
+                            fileCache.deleteFileFromBoth(
                                 qrNote?.documentId!!,
                                 CachedFileHandler.Category.Documents,
                                 fileName
@@ -544,7 +514,8 @@ class SecondFragment : Fragment() {
         } catch (ex: IOException) {
             // Log the error and show a message to the user
             Log.e("SecondFragment", "Error creating image file", ex)
-            Snackbar.make(requireView(), "Could not create image file.", Snackbar.LENGTH_LONG).show()
+            Snackbar.make(requireView(), "Could not create image file.", Snackbar.LENGTH_LONG)
+                .show()
             return // Stop the process if the file can't be created
         }
         // Continue only if photoFile was created successfully
@@ -565,6 +536,7 @@ class SecondFragment : Fragment() {
             }
         }
     }
+
     private val takePictureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -591,12 +563,12 @@ class SecondFragment : Fragment() {
 
                 // 4. Notify the MediaStore so the image appears in the gallery
                 scanFile(imageFile)
-
             } else {
                 Snackbar.make(requireView(), "Failed to save image.", Snackbar.LENGTH_SHORT).show()
             }
         }
     }
+
     private fun scanFile(file: File) {
         MediaScannerConnection.scanFile(
             requireContext(), arrayOf(file.absolutePath), null
@@ -623,8 +595,10 @@ class SecondFragment : Fragment() {
         startActivityForResult(intent, REQUEST_CODE_PICK_IMAGE)
     }
 
-    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        getContext()?.let { context ->
+            // This block will only execute if the context is not null
+            // ... proceed with your logic using 'context'
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_CODE_PICK_IMAGE && resultCode == Activity.RESULT_OK) {
             val selectedImageUri: Uri? = data?.data
@@ -648,26 +622,50 @@ class SecondFragment : Fragment() {
         if (requestCode == REQUEST_CODE_PICK_DOCUMENT && resultCode == Activity.RESULT_OK) {
             val uri = data?.data // This is the selected file's URI
             if (uri != null && qrNote != null) {
-                val cursor = requireContext().contentResolver.query(uri, null, null, null, null)
+                val cursor = context.contentResolver.query(uri, null, null, null, null)
                 cursor?.moveToFirst()
                 val fileName = cursor?.getString(cursor.getColumnIndexOrThrow("_display_name"))
                 cursor?.close()
 
-                val fileCache = FileCache(requireContext())
-                fileCache.storeFileInCache(qrNote?.documentId!!, CachedFileHandler.Category.Documents, fileName!!, uri)
+                val fileCache = CachedFileHandler(storageRef,context)
+                val cachedFile = fileCache.storeFileInCache(
+                    qrNote!!.documentId!!,
+                    CachedFileHandler.Category.Documents,
+                    fileName!!,
+                    uri
+                )
+                if (!cachedFile.exists()) {
+                    Toast.makeText(
+                        context,
+                        "Failed to save document locally.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return // Stop if local save failed
+                }
+
                 val documentRef = storageRef.child(qrNote!!.documentId + fileName)
                 val uploadTask = documentRef.putFile(uri)
+
                 uploadTask.addOnFailureListener { exception ->
                     Toast.makeText(
-                        requireContext(),
+                        context,
                         "Upload failed: " + exception.message,
                         Toast.LENGTH_SHORT
                     ).show()
                 }.addOnSuccessListener { taskSnapshot ->
-                    Toast.makeText(requireContext(), "Upload successful", Toast.LENGTH_SHORT).show()
-                    stringAdapter.stringList.add(fileName)
-                    stringAdapter.notifyDataSetChanged()
+                    Toast.makeText(context, "Upload successful", Toast.LENGTH_SHORT).show()
+                    if (::stringAdapter.isInitialized) {
+                        stringAdapter.stringList.add(fileName)
+                        stringAdapter.notifyDataSetChanged()
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "stringAdapter not initialized",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
+        }
             }
         }
     }
@@ -709,7 +707,7 @@ class SecondFragment : Fragment() {
                     if (documents.isEmpty) {
                         binding.qrCode.text = qrCode
                         Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
-                            .update("qrCode", qrCode)
+                            .update(qrNote!!::qrCode.name, qrCode)
                     } else {
                         Toast.makeText(
                             requireContext(),
@@ -740,6 +738,11 @@ class SecondFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        stringAdapter = DocumentAdapter(
+            ArrayList() // Start with an empty list
+        )
+
         val tileTextView: TextView = binding.tileText
 
         tileTextView.setOnClickListener {
@@ -756,7 +759,7 @@ class SecondFragment : Fragment() {
                     tileTextView.text = title
                     tileTextView.requestFocus()
                     Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
-                        .update("${qrNote!!::title.name}", title)
+                        .update(qrNote!!::title.name, title)
                 } else {
                     Snackbar.make(
                         requireView(), "Title cannot be empty", Toast.LENGTH_SHORT
@@ -782,8 +785,7 @@ class SecondFragment : Fragment() {
 
     private fun saveText() {
         Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
-            .update("content", _binding!!.textviewSecond.text.toString())
-        var textSaved = true
+            .update(qrNote!!::content.name, _binding!!.textviewSecond.text.toString())
     }
 
     companion object {

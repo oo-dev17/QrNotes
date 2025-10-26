@@ -22,7 +22,7 @@ class DocumentAdapter(val stringList: MutableList<String>) :
         val charPosition = stringEntry.lastIndexOf('.')
 
         holder.logoTextView.text =
-            if (charPosition == -1) "-" else stringEntry.substring(charPosition, stringEntry.length)
+            if (charPosition == -1) "-" else stringEntry.substring(charPosition +1, stringEntry.length)
                 .uppercase()
 
         // Set click listener for the item

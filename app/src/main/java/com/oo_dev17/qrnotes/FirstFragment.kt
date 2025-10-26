@@ -17,6 +17,7 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -38,8 +39,9 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
     private lateinit var itemAdapter: ItemAdapter
     private lateinit var qrNotes: MutableList<QrNote>
     private var _binding: FragmentFirstBinding? = null
-    private lateinit var adapter: ItemAdapter
     private lateinit var coroutineScope: CoroutineScope
+
+    private val sharedViewModel: SharedViewModel by activityViewModels()
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -206,20 +208,35 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         coroutineScope = viewLifecycleOwner.lifecycleScope
 
         getAllQrNotes { notes ->
+            qrNotes = notes.toMutableList()
+            val storageReference = Firebase.storage.reference
+            val cachedFileHandler = CachedFileHandler(storageReference, requireContext())
             notes.forEach { qrNote ->
                 Log.d(
                     "FirestoreAccess",
                     "QrNote found: Title:${qrNote.title},Content:${qrNote.content} QrCode:${qrNote.qrCode} DocId:'${qrNote.documentId}'"
                 )
             }
-            qrNotes = notes.toMutableList()
-            val storageReference = Firebase.storage.reference
-            val cachedFileHandler = CachedFileHandler(storageReference, requireContext())
             itemAdapter = ItemAdapter(qrNotes, this, coroutineScope, cachedFileHandler)
 
             binding.myRecyclerView.adapter = itemAdapter
             binding.myRecyclerView.layoutManager = LinearLayoutManager(requireContext())
             recyclerView.adapter = itemAdapter
+
+            sharedViewModel.noteToRefresh.observe(viewLifecycleOwner) { refreshInfo ->
+                // Check if there's a valid refresh request.
+                refreshInfo?.let { (noteId, newGalleryPicName) ->
+                    // 1. Find the index of the note in your adapter's list.
+                    val index = itemAdapter.allQrNotes.indexOfFirst { it.documentId == noteId }
+
+                    if (index != -1) {
+                        // Notify the adapter to redraw just this one item
+                        itemAdapter.notifyItemChanged(index)
+                    }
+                    // 4. Reset the LiveData to prevent re-triggering.
+                    sharedViewModel.onThumbnailRefreshHandled()
+                }
+            }
         }
 
         binding.searchText.addTextChangedListener(object : TextWatcher {
@@ -229,9 +246,9 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
 
                 val query = s.toString().trim()
                 if (query.isEmpty()) {
-                    itemAdapter.items = qrNotes
+                    itemAdapter.allQrNotes = qrNotes
                 } else {
-                    itemAdapter.items = filterQrNotes(query)
+                    itemAdapter.allQrNotes = filterQrNotes(query)
                 }
                 itemAdapter.run { notifyDataSetChanged() }
             }
@@ -293,7 +310,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         val simpleDateFormat = SimpleDateFormat("dd.MM.yyyy - HH:mm:ss")
         val dateString = simpleDateFormat.format(qrNote.creationDate)
         val info =
-            "Doc.Id:${qrNote.documentId}\n Created:${dateString}\nPictures: ${qrNote.pictureCount}\n  from cache: ${qrNote.picsLoadedFromCache}\n  from firestore: ${qrNote.picsLoadedFromFirestore}\n" +
+            "Doc.Id:${qrNote.documentId}\n GalleryPic:${qrNote.galleryPic}\n Created:${dateString}\nPictures: ${qrNote.pictureCount}\n  from cache: ${qrNote.picsLoadedFromCache}\n  from firestore: ${qrNote.picsLoadedFromFirestore}\n" +
                     "Documents: ${qrNote.documentsCount}\n from cache ${qrNote.docsLoadedFromCache}\n from firestore ${qrNote.docsLoadedFromFirestore}"
 
         val builder = AlertDialog.Builder(requireContext())
@@ -329,6 +346,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
     }*/
 
     override fun deleteQrNote(qrNote: QrNote) {
+        // TODO Delete files of qrNote
         val position = qrNotes.indexOf(qrNote)
         if (position != -1) {
             qrNotes.removeAt(position)

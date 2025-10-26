@@ -6,7 +6,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.activity.result.launch
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -15,8 +14,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+
+
 class ItemAdapter(
-    public var items: List<QrNote>,
+    public var allQrNotes: List<QrNote>,
     private val itemLongClickListener: ItemClickListener,
     private val coroutineScope: CoroutineScope,
     private val cachedFileHandler: CachedFileHandler
@@ -27,7 +28,7 @@ class ItemAdapter(
     class ItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val titleTextView: TextView = itemView.findViewById(R.id.item_title)
         val uidTextView: TextView = itemView.findViewById(R.id.item_uid)
-        val item_image: ImageView = itemView.findViewById(R.id.item_image)
+        val itemImage: ImageView = itemView.findViewById(R.id.item_image)
         val qrCodeTextView: TextView = itemView.findViewById(R.id.item_qrCode)
     }
 
@@ -39,7 +40,7 @@ class ItemAdapter(
     }
 
     override fun onBindViewHolder(holder: ItemViewHolder, position: Int) {
-        val qrNote = items[position]
+        val qrNote = allQrNotes[position]
         holder.titleTextView.text = qrNote.title
         //holder.descriptionTextView.text = String.format("%20.20s", qrNote.content)
         holder.uidTextView.text = qrNote.documentId
@@ -66,15 +67,16 @@ class ItemAdapter(
             }
             withContext(Dispatchers.Main) { //go back to main thread
                 if (firstPics.isNotEmpty()) {
+                    val galleryPic = if (qrNote.galleryPic?.isNotEmpty() ?: false) firstPics.first { f-> f.name == qrNote.galleryPic } else firstPics.first()
                     // Load image using a library like Glide or Coil
-                    Glide.with(holder.itemView.context).load(firstPics.first())
-                        .into(holder.item_image)
+                    Glide.with(holder.itemView.context).load(galleryPic)
+                        .into(holder.itemImage)
                 }
             }
         }
     }
 
     override fun getItemCount(): Int {
-        return items.size
+        return allQrNotes.size
     }
 }

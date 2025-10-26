@@ -14,6 +14,7 @@ data class QrNote(
     val creationDate: Long = System.currentTimeMillis(),
     val qrCode: String = "",
     var documentId: String? = null,
+    val galleryPic: String? = null,
 
     // Runtime statistics, excluded from Firestore
     @get:Exclude var pictureCount: Int = 0,
@@ -28,6 +29,7 @@ data class QrNote(
         parcel.readString()!!,
         parcel.readString()!!,
         parcel.readLong(),
+        parcel.readString()!!,
         parcel.readString()!!,
         parcel.readString()!!
     )
@@ -53,6 +55,7 @@ data class QrNote(
         parcel.writeString(content)
         parcel.writeLong(creationDate)
         parcel.writeString(documentId)
+        parcel.writeString(galleryPic)
     }
 
     // Companion object with CREATOR to create instances of QrNote from a Parcel
@@ -77,6 +80,7 @@ data class QrNote(
     }
 
     suspend internal fun retrieveImageFiles(cachedFileHandler: CachedFileHandler): List<File> {
+
         val images = cachedFileHandler.getFileNamesFromCloud(this, CachedFileHandler.Category.Images)
 
         // Reset stats before retrieving
@@ -87,7 +91,7 @@ data class QrNote(
         return images.mapNotNull { imageName ->
             try {
                 val (file, fromCache) = cachedFileHandler.getFileFromCacheOrCloud(
-                    this,
+                    this.documentId!!,
                     CachedFileHandler.Category.Images,
                     imageName
                 )
@@ -105,41 +109,6 @@ data class QrNote(
                 Log.e(
                     "QrNote",
                     "Failed to retrieve image file '$imageName' for note '$documentId' at QrNote.retrieveImageFiles",
-                    e
-                )
-                null
-            }
-        }
-    }
-
-    suspend internal fun retrieveDocumentFiles(cachedFileHandler: CachedFileHandler): List<File> {
-        val documentFileNames = cachedFileHandler.getFileNamesFromCloud(this, CachedFileHandler.Category.Documents)
-
-        // Reset stats before retrieving
-        docsLoadedFromCache = 0
-        docsLoadedFromFirestore = 0
-
-        return documentFileNames.mapNotNull { document ->
-            try {
-                val (file, fromCache) = cachedFileHandler.getFileFromCacheOrCloud(
-                    this,
-                    CachedFileHandler.Category.Documents,
-                    document
-                )
-
-                if (file != null) {
-
-                    if (fromCache) {
-                        docsLoadedFromCache++
-                    } else {
-                        docsLoadedFromFirestore++
-                    }
-                }
-                file
-            } catch (e: IOException) {
-                Log.e(
-                    "QrNote",
-                    "Failed to retrieve document file '$document' for note '$documentId' at QrNote.retrieveDocumentFiles",
                     e
                 )
                 null
