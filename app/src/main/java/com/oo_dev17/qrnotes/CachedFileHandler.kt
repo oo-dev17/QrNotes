@@ -21,7 +21,7 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
                 .await() // Suspends coroutine until complete
 
             listResult.items.map { it.name }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyList() // Or throw to propagate error
         }
     }
@@ -127,20 +127,13 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
         return null // File doesn't exist or an error occurred
     }
 
-    fun getPathForFileFromCache(
-        documentId: String,
-        category: Category,
-        fileName: String
-    ): Pair<File, Boolean> {
-        val file = MakeFile(documentId, category, fileName)
-        return Pair(file, file.exists())
-    }
 
+/*
     fun clearCache() {
         val cacheDir = context.cacheDir
         cacheDir.deleteRecursively()
     }
-
+*/
     fun FileExists(
         documentId: String,
         category: Category,

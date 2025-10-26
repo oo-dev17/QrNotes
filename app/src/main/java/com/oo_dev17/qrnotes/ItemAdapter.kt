@@ -17,7 +17,7 @@ import kotlinx.coroutines.withContext
 
 
 class ItemAdapter(
-    public var allQrNotes: List<QrNote>,
+     var allQrNotes: List<QrNote>,
     private val itemLongClickListener: ItemClickListener,
     private val coroutineScope: CoroutineScope,
     private val cachedFileHandler: CachedFileHandler

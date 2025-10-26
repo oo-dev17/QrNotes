@@ -101,7 +101,7 @@ class SecondFragment : Fragment() {
                 binding.textviewSecond.text =
                     Editable.Factory.getInstance().newEditable(qrNote!!.content)
                 titleText.text = qrNote?.title ?: "No title"
-                binding.qrCode.text = "QR:" + qrNote!!.qrCode
+                binding.qrCode.text = "QR:${qrNote!!.qrCode}"
                 moveOrphanedPdfsToDocuments() // Move any orphaned PDFs on startup
             }
         }
@@ -578,14 +578,6 @@ class SecondFragment : Fragment() {
         }
     }
 
-    private fun scanFileAfterDelete(file: File) {
-        MediaScannerConnection.scanFile(
-            requireContext(), arrayOf(file.parent), null
-        ) { path, uri ->
-            // File has been scanned and added to the MediaStore
-            Log.d("MediaScan", "Scanned file: $path, URI: $uri")
-        }
-    }
 
     private val REQUEST_CODE_PICK_IMAGE = 101
 
@@ -595,6 +587,7 @@ class SecondFragment : Fragment() {
         startActivityForResult(intent, REQUEST_CODE_PICK_IMAGE)
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         getContext()?.let { context ->
             // This block will only execute if the context is not null

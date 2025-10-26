@@ -100,7 +100,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                         Log.w("Firestore", "Error adding note", e)
                     }
                 } catch (e: Exception) {
-                    var z = 4
+                    Log.e("Firestore", "Error adding note", e)
                 }
             } else {
                 Toast.makeText(requireContext(), "Title cannot be empty", Toast.LENGTH_SHORT).show()
@@ -137,17 +137,6 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         }
     }
 
-    private fun launchQRCodeScanner() {
-        val options = ScanOptions().apply {
-            setDesiredBarcodeFormats(ScanOptions.QR_CODE) // Specify QR code format
-            setPrompt("Scan a QR code") // Set a prompt
-            setCameraId(0) // Use the default camera
-            setBeepEnabled(true) // Play a beep sound
-            setBarcodeImageEnabled(true) // Enable saving the barcode image
-        }
-
-        scanLauncher.launch(options) // Launch the scanner
-    }
 
     private fun launchQRCodeScanner1() {
         val options = ScanOptions().apply {
@@ -161,9 +150,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
     }
 
     private val scanLauncher1 = registerForActivityResult(ScanContract()) { result ->
-        if (result.contents == null) {
-
-        } else {
+        if (result.contents != null) {
             val scannedData = result.contents // Get the scanned QR code data
             try {
                 val note = qrNotes.firstOrNull() { note -> note.qrCode == scannedData }
@@ -179,7 +166,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                 bundle.putParcelable("qrNote", note)
                 findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment, bundle)
             } catch (e: Exception) {
-                Toast.makeText(requireContext(), "QR code not found", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "QR code not found: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
 
