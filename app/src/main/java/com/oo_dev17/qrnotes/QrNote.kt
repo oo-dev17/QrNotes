@@ -9,12 +9,12 @@ import java.io.File
 import java.io.IOException
 
 data class QrNote(
-    val title: String? = null,
+    var title: String? = null,
     val content: String? = null,
     val creationDate: Long = System.currentTimeMillis(),
-    val qrCode: String = "",
+    var qrCode: String = "",
     var documentId: String? = null,
-    val galleryPic: String? = null,
+    var galleryPic: String? = null,
 
     // Runtime statistics, excluded from Firestore
     @get:Exclude var pictureCount: Int = 0,

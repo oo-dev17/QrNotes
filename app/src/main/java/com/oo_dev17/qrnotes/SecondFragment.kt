@@ -238,6 +238,7 @@ class SecondFragment : Fragment() {
                                 Firebase.firestore.collection("qrNotes").document(noteId)
                                     .update("galleryPic", newGalleryPicName)
                                     .addOnSuccessListener {
+                                        qrNote!!.galleryPic = newGalleryPicName
                                         // --- THIS IS THE TRIGGER ---
                                         sharedViewModel.requestThumbnailRefresh(
                                             noteId,
@@ -711,6 +712,7 @@ class SecondFragment : Fragment() {
                 .addOnSuccessListener { documents ->
                     if (documents.isEmpty) {
                         binding.qrCode.text = qrCode
+                        qrNote.qrCode = qrCode
                         Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
                             .update(qrNote!!::qrCode.name, qrCode)
                     } else {
@@ -733,7 +735,7 @@ class SecondFragment : Fragment() {
                     ScanOptions.QR_CODE
                 )
             ) // Specify QR code format
-            setPrompt("Scan a QR code") // Set a prompt
+            setPrompt("Scan a new QR code") // Set a prompt
             setCameraId(0) // Use the default camera
             setBeepEnabled(true) // Play a beep sound
             setBarcodeImageEnabled(true) // Enable saving the barcode image
@@ -761,6 +763,7 @@ class SecondFragment : Fragment() {
             builder.setPositiveButton("Change") { dialog, _ ->
                 val title = input.text.toString()
                 if (title.isNotEmpty()) {
+                    qrNote!!.title = title
                     tileTextView.text = title
                     tileTextView.requestFocus()
                     Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
