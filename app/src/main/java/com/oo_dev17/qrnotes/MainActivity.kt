@@ -9,6 +9,7 @@ import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.fragment.NavHostFragment
@@ -26,7 +27,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var sharedDb: FirebaseFirestore
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
-
+    private val sharedViewModel: SecondSharedViewModel by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -132,12 +133,20 @@ class MainActivity : AppCompatActivity() {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         return when (item.itemId) {
+            R.id.action_scanNewQrCode -> {
+                // --- THIS IS THE TRIGGER ---
+                // Notify the SharedViewModel that the user wants to scan.
+                // DO NOT call any fragment-specific code here.
+                sharedViewModel.requestAction(NoteAction.SCAN_NEW_QR_CODE)
+
+                true // Return true to indicate the click was handled
+            }
             R.id.action_settings -> {
                 val totalCacheSizeBytes = getCacheSize(this)
 
                 val builder = AlertDialog.Builder(this)
                 val formattedCacheSize = formatSize(totalCacheSizeBytes)
-                builder.setTitle("QrNote Options")
+                builder.setTitle("QrNote App Options")
                     .setMessage("Cache Size $formattedCacheSize\nCache folder: ${cacheDir.absolutePath}" )
                     .setNeutralButton("Clear Cache"){dialog, _ ->
                         val deleted = cacheDir.deleteRecursively()

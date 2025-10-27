@@ -35,6 +35,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.firestore
 import com.google.firebase.storage.storage
 import com.journeyapps.barcodescanner.ScanContract
@@ -58,9 +59,12 @@ class SecondFragment : Fragment() {
     private var qrNote: QrNote? = null
     private var _binding: FragmentSecondBinding? = null
 
+    private var firestoreListener: ListenerRegistration? = null
+
     // Create a storage reference from our app
     private val storageRef = Firebase.storage.reference
     private val sharedViewModel: SharedViewModel by activityViewModels()
+    private val secondSharedViewModel: SecondSharedViewModel by activityViewModels()
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -230,7 +234,7 @@ class SecondFragment : Fragment() {
                 when (imageItem) {
                     is ImageItem.FileImage -> {
                         val builder = android.app.AlertDialog.Builder(requireContext())
-                        builder.setTitle("QrNote Options")
+                        builder.setTitle("QrNote Image Menu")
                             .setMessage("What do you want to do with img ${imageItem.file.name} ?")
                             .setNeutralButton("Make gallery picture") { dialog, _ ->
                                 val noteId = qrNote!!.documentId!!
@@ -238,7 +242,6 @@ class SecondFragment : Fragment() {
                                 Firebase.firestore.collection("qrNotes").document(noteId)
                                     .update("galleryPic", newGalleryPicName)
                                     .addOnSuccessListener {
-                                        qrNote!!.galleryPic = newGalleryPicName
                                         // --- THIS IS THE TRIGGER ---
                                         sharedViewModel.requestThumbnailRefresh(
                                             noteId,
@@ -370,7 +373,7 @@ class SecondFragment : Fragment() {
                 }
                 stringAdapter.onItemLongClick = { fileName, position ->
                     val builder = android.app.AlertDialog.Builder(requireContext())
-                    builder.setTitle("QrNote Options")
+                    builder.setTitle("QrNote Doc Options")
                         .setMessage("What do you want to do with doc $fileName ?")
                         .setPositiveButton("Delete") { dialog, _ ->
                             // Delete the document
@@ -711,8 +714,7 @@ class SecondFragment : Fragment() {
                 .get()
                 .addOnSuccessListener { documents ->
                     if (documents.isEmpty) {
-                        binding.qrCode.text = qrCode
-                        qrNote.qrCode = qrCode
+
                         Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
                             .update(qrNote!!::qrCode.name, qrCode)
                     } else {
@@ -746,6 +748,7 @@ class SecondFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+
         stringAdapter = DocumentAdapter(
             ArrayList() // Start with an empty list
         )
@@ -763,9 +766,7 @@ class SecondFragment : Fragment() {
             builder.setPositiveButton("Change") { dialog, _ ->
                 val title = input.text.toString()
                 if (title.isNotEmpty()) {
-                    qrNote!!.title = title
-                    tileTextView.text = title
-                    tileTextView.requestFocus()
+
                     Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
                         .update(qrNote!!::title.name, title)
                 } else {
@@ -781,9 +782,52 @@ class SecondFragment : Fragment() {
             }
             builder.show()
         }
-        binding.buttonScanQr.setOnClickListener {
-            launchQRCodeScanner()
+
+
+        val docRef = Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
+        firestoreListener = docRef.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Log.e("FirestoreListener", "Listen failed.", error)
+                return@addSnapshotListener
+            }
+
+            if (snapshot != null && snapshot.exists()) {
+                // --- THIS IS THE MAGIC ---
+                // Firestore has new data. Convert it to your QrNote object.
+                qrNote = snapshot.toObject(QrNote::class.java)
+                qrNote?.documentId = snapshot.id
+
+                // Update your entire UI with the fresh data from the SSoT.
+                updateUiWithNewData()
+            } else {
+                Log.d("FirestoreListener", "Current data: null")
+            }
         }
+        secondSharedViewModel.requestedAction.observe(viewLifecycleOwner) { action ->
+            // When the action is not NONE, it's a request for this fragment to act.
+            when (action) {
+                NoteAction.SCAN_NEW_QR_CODE -> {
+                    // --- HANDLE THE ACTION HERE ---
+                    // The user clicked the menu item, so launch the scanner.
+                    launchQRCodeScanner()
+
+                    // IMPORTANT: Reset the action so it doesn't run again
+                    // if the user rotates the screen or navigates back.
+                    secondSharedViewModel.onActionHandled()
+                }
+                NoteAction.NONE -> { /* Do nothing, this is the idle state */ }
+                else -> { /* Do nothing */ }
+            }
+        }
+    }
+    private fun updateUiWithNewData() {
+        // This function is now the single place where UI is updated.
+        binding.tileText.text = qrNote?.title
+        binding.tileText.requestFocus()
+        binding.qrCode.text = qrNote?.qrCode
+
+
+        // ... update all other UI elements from the 'qrNote' object
     }
 
     override fun onDestroyView() {

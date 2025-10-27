@@ -32,7 +32,7 @@
             app:layout_constraintTop_toBottomOf="@id/tileText"
             tools:ignore="HardcodedText" />
 
-        <Button
+        <!--Button
             android:id="@+id/button_scan_qr"
             style="@style/Widget.AppCompat.Button"
             android:layout_width="90dp"
@@ -43,7 +43,7 @@
             app:iconSize="20dp"
             app:iconGravity="textEnd"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent" /-->
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recycler_view_images"

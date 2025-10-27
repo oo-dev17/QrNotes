@@ -14,10 +14,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-
-
 class ItemAdapter(
-     var allQrNotes: List<QrNote>,
+    var allQrNotes: List<QrNote>,
     private val itemLongClickListener: ItemClickListener,
     private val coroutineScope: CoroutineScope,
     private val cachedFileHandler: CachedFileHandler
@@ -66,9 +64,10 @@ class ItemAdapter(
                 qrNote.retrieveImageFiles(cachedFileHandler) // Perform network/disk operation on IO thread
             }
             withContext(Dispatchers.Main) { //go back to main thread
-                if (firstPics.isNotEmpty()) {
-                    val galleryPic = if (qrNote.galleryPic?.isNotEmpty() ?: false) firstPics.first { f-> f.name == qrNote.galleryPic } else firstPics.first()
-                    // Load image using a library like Glide or Coil
+                // Find the picture with the specified name. Returns null if not found.
+                val specificGalleryPic = firstPics.firstOrNull { it.name == qrNote.galleryPic }
+                val galleryPic = specificGalleryPic ?: firstPics.firstOrNull()
+                if (galleryPic != null) {
                     Glide.with(holder.itemView.context).load(galleryPic)
                         .into(holder.itemImage)
                 }
@@ -76,7 +75,8 @@ class ItemAdapter(
         }
     }
 
-    override fun getItemCount(): Int {
-        return allQrNotes.size
-    }
+
+override fun getItemCount(): Int {
+    return allQrNotes.size
+}
 }

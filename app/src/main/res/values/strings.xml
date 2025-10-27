@@ -17,4 +17,5 @@
         diam, vel rutrum tellus vulputate quis. Aliquam eget libero aliquet, imperdiet nisl a,
         ornare ex. Sed rhoncus est ut libero porta lobortis. Fusce in dictum tellus.\n\n
     </string>
+    <string name="action_scanNewQrCode">Scan new QR code</string>
 </resources>

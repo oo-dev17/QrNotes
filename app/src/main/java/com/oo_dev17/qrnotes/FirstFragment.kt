@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.observe
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.firebase.Firebase
@@ -224,6 +225,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                     sharedViewModel.onThumbnailRefreshHandled()
                 }
             }
+
         }
 
         binding.searchText.addTextChangedListener(object : TextWatcher {
@@ -301,7 +303,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                     "Documents: ${qrNote.documentsCount}\n from cache ${qrNote.docsLoadedFromCache}\n from firestore ${qrNote.docsLoadedFromFirestore}"
 
         val builder = AlertDialog.Builder(requireContext())
-        builder.setTitle("QrNote Options")
+        builder.setTitle("QrNote Options (FirstFragment)")
             .setMessage("$info\n\n\nWhat do you want to do with this QrNote?")
             .setPositiveButton("Delete") { dialog, _ ->
                 deleteQrNote(qrNote)
