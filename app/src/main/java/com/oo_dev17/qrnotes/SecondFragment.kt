@@ -648,7 +648,7 @@ class SecondFragment : Fragment() {
                         return // Stop if local save failed
                     }
 
-                    val documentRef = storageRef.child(qrNote!!.documentId + fileName)
+                    val documentRef = storageRef.child(qrNote!!.documentId!!).child(CachedFileHandler.Category.Documents.name).child( fileName)
                     val uploadTask = documentRef.putFile(uri)
 
                     uploadTask.addOnFailureListener { exception ->
