@@ -19,6 +19,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.MimeTypeMap
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
@@ -88,7 +89,6 @@ class SecondFragment : Fragment() {
         textviewSecond.autoLinkMask = Linkify.WEB_URLS
         val titleText = binding.tileText
 
-
         cachedFileHandler = CachedFileHandler(storageRef, requireContext())
 
         // Get the Bundle from the arguments
@@ -110,9 +110,13 @@ class SecondFragment : Fragment() {
                 moveOrphanedPdfsToDocuments() // Move any orphaned PDFs on startup
             }
         }
+
+        // OPEN DOCuments
         binding.fabAddDoc.setOnClickListener { _ ->
             OpenFile(this).selectDocToAdd(Uri.EMPTY, true)
         }
+
+        // OPEN PDF
         binding.fabAddPdf.setOnClickListener { _ ->
             OpenFile(this).selectDocToAdd(Uri.EMPTY, false)
         }
@@ -351,8 +355,8 @@ class SecondFragment : Fragment() {
                 */
                 stringAdapter.onItemClick = { fileName ->
                     lifecycleScope.launch {
-                        val fileCache = CachedFileHandler(storageRef, requireContext())
-                        val (file, _) = fileCache.getFileFromCacheOrCloud(
+                        val cachedFileHandler = CachedFileHandler(storageRef, requireContext())
+                        val (file, _) = cachedFileHandler.getFileFromCacheOrCloud(
                             qrNote!!.documentId!!,
                             CachedFileHandler.Category.Documents, fileName
                         )
@@ -377,8 +381,8 @@ class SecondFragment : Fragment() {
                         .setMessage("What do you want to do with doc $fileName ?")
                         .setPositiveButton("Delete") { dialog, _ ->
                             // Delete the document
-                            val fileCache = CachedFileHandler(storageRef, requireContext())
-                            fileCache.deleteFileFromBoth(
+                            val cachedFileHandler = CachedFileHandler(storageRef, requireContext())
+                            cachedFileHandler.deleteFileFromBoth(
                                 qrNote?.documentId!!,
                                 CachedFileHandler.Category.Documents,
                                 fileName
@@ -569,14 +573,7 @@ class SecondFragment : Fragment() {
                     imageFile,
                     CachedFileHandler.Category.Images
                 )
-
-                // 3. Put the file into your local cache
-                cachedFileHandler.copyFileToCache(
-                    qrNote!!.documentId!!,
-                    CachedFileHandler.Category.Images,
-                    imageFile.name,
-                    imageFile
-                )
+                // The file IS already in cache!
 
                 // 4. Notify the MediaStore so the image appears in the gallery
                 scanFile(imageFile)
@@ -631,13 +628,29 @@ class SecondFragment : Fragment() {
             if (requestCode == REQUEST_CODE_PICK_DOCUMENT && resultCode == Activity.RESULT_OK) {
                 val uri = data?.data // This is the selected file's URI
                 if (uri != null && qrNote != null) {
-                    val cursor = context.contentResolver.query(uri, null, null, null, null)
+                    val contentResolver = context.contentResolver
+                    var fileName = "unknown_document"
+                    val mimeType = contentResolver.getType(uri)
+                    val cursor = contentResolver.query(uri, null, null, null, null)
                     cursor?.moveToFirst()
-                    val fileName = cursor?.getString(cursor.getColumnIndexOrThrow("_display_name"))
-                    cursor?.close()
+                    cursor?.use {
+                        if (it.moveToFirst()) {
+                            val displayName = it.getString(it.getColumnIndexOrThrow("_display_name"))
 
-                    val fileCache = CachedFileHandler(storageRef, context)
-                    val cachedFile = fileCache.storeFileInCache(
+                            // Check if the display name already has an extension
+                            if (!displayName.contains(".")) {
+                                // If not, get the extension from the MIME type
+                                val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
+                                // Append the extension to the display name
+                                fileName = "$displayName.$extension"
+                            } else {
+                                // If it already has an extension, use it directly
+                                fileName = displayName
+                            }
+                        }
+                    }
+                    val cachedFileHandler = CachedFileHandler(storageRef, context)
+                    val cachedFile = cachedFileHandler.storeFileInCache(
                         qrNote!!.documentId!!,
                         CachedFileHandler.Category.Documents,
                         fileName!!,
@@ -662,7 +675,7 @@ class SecondFragment : Fragment() {
                             Toast.LENGTH_SHORT
                         ).show()
                     }.addOnSuccessListener { taskSnapshot ->
-                        Toast.makeText(context, "Upload successful", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Upload successful of $fileName", Toast.LENGTH_SHORT).show()
                         if (::stringAdapter.isInitialized) {
                             stringAdapter.stringList.add(fileName)
                             stringAdapter.notifyDataSetChanged()

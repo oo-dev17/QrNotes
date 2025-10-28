@@ -33,21 +33,16 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
     ): Pair<File?, Boolean> {
         assert(documentId.isNotEmpty())
 
-                val file = MakeFile(documentId, category, filename)
+        val file = makeFile(documentId, category, filename)
         if (file.exists()) {
             return Pair(file, true)
         } else {
             return try {
-                if (file.exists())
-                    return Pair(file, true)
-
-                // Ensure the parent directory exists before attempting to download.
-                file.parentFile?.mkdirs()
 
                 storageRef.child(documentId).child(category.name).child(filename)
                     .getFile(file)
                     .await()
-                copyFileToCache(documentId, category, filename, file)
+                // now it's already saved in cache!
                 Pair(file, false)
             } catch (exception: Exception) {
                 println("Error getting for docID:'${documentId}' cat: ${category.name} '$filename' from cloud: " + exception.message)
@@ -76,7 +71,7 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
         fileName: String,
         file: File
     ) {
-        val cacheFile = MakeFile(documentId, category, fileName)
+        val cacheFile = makeFile(documentId, category, fileName)
         try {
             file.copyTo(cacheFile)
         } catch (e: IOException) {
@@ -90,29 +85,35 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
         fileName: String,
         fileUri: Uri
     ): File {
-        val cacheFile = MakeFile(documentId, category, fileName)
+        val cacheFile = makeFile(documentId, category, fileName)
         try {
-            context.contentResolver.openInputStream(fileUri)?.use { input ->
-                FileOutputStream(cacheFile).use { output ->
-                    input.copyTo(output)
+            // see https://stackoverflow.com/questions/10301674/save-file-in-android-with-spaces-in-file-name
+            context.contentResolver.openInputStream(fileUri)?.use { inputStream ->
+                // 2. Create a FileOutputStream using a FileDescriptor to avoid the space bug.
+                val parcelFileDescriptor =
+                    context.contentResolver.openFileDescriptor(Uri.fromFile(cacheFile), "w")
+                parcelFileDescriptor?.use { pfd ->
+                    FileOutputStream(pfd.fileDescriptor).use { outputStream ->
+                        // 3. Copy the data from the input stream to the output stream.
+                        inputStream.copyTo(outputStream)
+                    }
                 }
             }
+
+            // --- END: THE FIX ---
         } catch (e: IOException) {
-            e.printStackTrace()
+            Log.e("CachedFileHandler", "Failed to store file in cache: ${e.message}", e)
+            // Optionally, re-throw or handle the error more gracefully.
         }
         return cacheFile
     }
 
-
-
-
-/*
-    fun clearCache() {
-        val cacheDir = context.cacheDir
-        cacheDir.deleteRecursively()
-    }
-*/
-
+    /*
+        fun clearCache() {
+            val cacheDir = context.cacheDir
+            cacheDir.deleteRecursively()
+        }
+    */
 
     fun deleteFileFromBoth(
         documentId: String,
@@ -128,10 +129,10 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
         storageRef.child(documentId).child(category.name).child(name).delete()
             .addOnFailureListener { fail ->
 
-        Log.e(
-            "CachedFileHandler",
-            "Failed to delete file: deleteFileFromCloud: docId: '${documentId}' cat:${category.name} name: '$name': ${fail.message}"
-        )
+                Log.e(
+                    "CachedFileHandler",
+                    "Failed to delete file: deleteFileFromCloud: docId: '${documentId}' cat:${category.name} name: '$name': ${fail.message}"
+                )
             }
     }
 
@@ -141,7 +142,7 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
         fileName: String
     ) {
 
-        val cacheFile = MakeFile(documentId, category, fileName)
+        val cacheFile = makeFile(documentId, category, fileName)
         try {
             cacheFile.delete()
         } catch (e: Exception) {
@@ -152,7 +153,7 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
         }
     }
 
-    fun MakeFile(
+    fun makeFile(
         documentId: String,
         category: Category,
         fileName: String
@@ -161,7 +162,9 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
         if (!folder.exists()) folder.mkdir()
         val folder2 = File(folder, category.name)
         if (!folder2.exists()) folder2.mkdir()
-        return File(folder2, fileName)
+        val file= File(folder2, fileName)
+        val name= file.name
+        return file
     }
 
     enum class Category {
