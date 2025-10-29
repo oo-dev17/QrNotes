@@ -237,7 +237,7 @@ class SecondFragment : Fragment() {
             imageAdapter.onItemLongClick = { imageItem, position ->
                 when (imageItem) {
                     is ImageItem.FileImage -> {
-                        val builder = android.app.AlertDialog.Builder(requireContext())
+                        val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
                         builder.setTitle("QrNote Image Menu")
                             .setMessage("What do you want to do with img ${imageItem.file.name} ?")
                             .setNeutralButton("Make gallery picture") { dialog, _ ->
@@ -376,7 +376,7 @@ class SecondFragment : Fragment() {
                     }
                 }
                 stringAdapter.onItemLongClick = { fileName, position ->
-                    val builder = android.app.AlertDialog.Builder(requireContext())
+                    val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
                     builder.setTitle("QrNote Doc Options")
                         .setMessage("What do you want to do with doc $fileName ?")
                         .setPositiveButton("Delete") { dialog, _ ->
@@ -770,7 +770,7 @@ class SecondFragment : Fragment() {
 
         tileTextView.setOnClickListener {
 
-            val builder = AlertDialog.Builder(requireContext())
+            val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
             builder.setTitle("Change Title")
             val input = EditText(requireContext()).apply {
                 setText(qrNote!!.title)
@@ -816,6 +816,7 @@ class SecondFragment : Fragment() {
                 Log.d("FirestoreListener", "Current data: null")
             }
         }
+        // MENU BUTTON "SCAN NEW QR CODE"
         secondSharedViewModel.requestedAction.observe(viewLifecycleOwner) { action ->
             // When the action is not NONE, it's a request for this fragment to act.
             when (action) {

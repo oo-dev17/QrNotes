@@ -22,6 +22,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.observe
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
@@ -63,9 +64,9 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         return binding.root
     }
 
-    private fun showTitleInputDialog() {
+    private fun showTitleInputDialog(newQrCode :String? = null) {
         // Create an AlertDialog.Builder using the Activity context
-        val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+        val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
         builder.setTitle("Create New Note")
         builder.setMessage("Enter a title for the note")
         val sharedDb = Firebase.firestore
@@ -79,14 +80,13 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             val title = input.text.toString()
             if (title.isNotEmpty()) {
                 // Create a new QrNote object
-                val note = QrNote(title, "") // Empty content for now
+                val note = QrNote(title, "", qrCode = newQrCode ?: "") // Empty content for now
 
                 try {
                     sharedDb.collection("qrNotes").add(note).addOnSuccessListener { docRef ->
                         Log.d("FirestoreAccess", "Note added with ID: ${docRef.id}")
                         sharedDb.collection("qrNotes").document(docRef.id).update("id", docRef.id)
                         note.documentId = docRef.id
-
                         onNewQrNote(note)
                         // Jump to second fragment
                         val bundle = Bundle()
@@ -138,10 +138,15 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         }
     }
 
-
     private fun launchQRCodeScanner1() {
         val options = ScanOptions().apply {
-            setDesiredBarcodeFormats(ScanOptions.QR_CODE) // Specify QR code format
+            setDesiredBarcodeFormats(
+                listOf(
+                    ScanOptions.EAN_13,
+                    ScanOptions.EAN_8,
+                    ScanOptions.QR_CODE
+                )
+            ) // Specify QR code format
             setPrompt("Scan a QR code") // Set a prompt
             setCameraId(0) // Use the default camera
             setBeepEnabled(true) // Play a beep sound
@@ -161,13 +166,28 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                         "QR code not found: $scannedData",
                         Toast.LENGTH_SHORT
                     ).show()
+                    val builder = android.app.AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
+                    builder.setTitle("QrNote Image Menu")
+                        .setMessage("QR code $scannedData not found, do you want to create a new note?")
+                        .setPositiveButton("YES") { dialog, _ ->
+                            dialog.dismiss()
+                            showTitleInputDialog(scannedData)
+                        }
+                        .setNegativeButton("NO") { dialog, _ ->
+                            dialog.dismiss()
+                        }
+                        .show()
                     return@registerForActivityResult
                 }
                 val bundle = Bundle()
                 bundle.putParcelable("qrNote", note)
                 findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment, bundle)
             } catch (e: Exception) {
-                Toast.makeText(requireContext(), "QR code not found: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireContext(),
+                    "QR code not found: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
 
@@ -302,37 +322,37 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             "Doc.Id:${qrNote.documentId}\n GalleryPic:${qrNote.galleryPic}\n Created:${dateString}\nPictures: ${qrNote.pictureCount}\n  from cache: ${qrNote.picsLoadedFromCache}\n  from firestore: ${qrNote.picsLoadedFromFirestore}\n" +
                     "Documents: ${qrNote.documentsCount}\n from cache ${qrNote.docsLoadedFromCache}\n from firestore ${qrNote.docsLoadedFromFirestore}"
 
-        val builder = AlertDialog.Builder(requireContext())
+        val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
         builder.setTitle("QrNote Options (FirstFragment)")
             .setMessage("$info\n\n\nWhat do you want to do with this QrNote?")
             .setPositiveButton("Delete") { dialog, _ ->
                 deleteQrNote(qrNote)
                 dialog.dismiss()
             }
-/*            .setNeutralButton("Info") { dialog, _ ->
-                showQrNoteInfo(qrNote)
-                dialog.dismiss()
-            }*/
+            /*            .setNeutralButton("Info") { dialog, _ ->
+                            showQrNoteInfo(qrNote)
+                            dialog.dismiss()
+                        }*/
             .setNegativeButton("Cancel") { dialog, _ ->
                 dialog.dismiss()
             }
             .show()
     }
-/*
-    private fun showQrNoteInfo(qrNote: QrNote) {
+    /*
+        private fun showQrNoteInfo(qrNote: QrNote) {
 
-        val info =
-            "Pictures: ${qrNote.pictureCount}\nLoaded from cache: ${qrNote.picsLoadedFromCache}\nLoaded from cloud: ${qrNote.picsLoadedFromFirestore}\n" +
-                    "Documents: ${qrNote.allDocuments.count()} From cache ${qrNote.docsLoadedFromCache} From firestore ${qrNote.docsLoadedFromFirestore}"
+            val info =
+                "Pictures: ${qrNote.pictureCount}\nLoaded from cache: ${qrNote.picsLoadedFromCache}\nLoaded from cloud: ${qrNote.picsLoadedFromFirestore}\n" +
+                        "Documents: ${qrNote.allDocuments.count()} From cache ${qrNote.docsLoadedFromCache} From firestore ${qrNote.docsLoadedFromFirestore}"
 
-        val builder = AlertDialog.Builder(requireContext())
-        builder.setTitle("Note Info")
-            .setMessage(info)
-            .setPositiveButton("OK") { dialog, _ ->
-                dialog.dismiss()
-            }
-            .show()
-    }*/
+            val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            builder.setTitle("Note Info")
+                .setMessage(info)
+                .setPositiveButton("OK") { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .show()
+        }*/
 
     override fun deleteQrNote(qrNote: QrNote) {
         // TODO Delete files of qrNote

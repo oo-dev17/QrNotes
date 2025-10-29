@@ -144,7 +144,7 @@ class MainActivity : AppCompatActivity() {
             R.id.action_settings -> {
                 val totalCacheSizeBytes = getCacheSize(this)
 
-                val builder = AlertDialog.Builder(this)
+                val builder = androidx.appcompat.app.AlertDialog.Builder(this,R.style.AlertDialogTheme)
                 val formattedCacheSize = formatSize(totalCacheSizeBytes)
                 builder.setTitle("QrNote App Options")
                     .setMessage("Cache Size $formattedCacheSize\nCache folder: ${cacheDir.absolutePath}" )

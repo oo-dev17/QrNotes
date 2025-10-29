@@ -6,4 +6,34 @@
     </style>
 
     <style name="Theme.QrNotes" parent="Base.Theme.QrNotes" />
+    <!-- 1. Use a Material3 Dialog Theme as the parent -->
+    <style name="AlertDialogTheme" parent="ThemeOverlay.Material3.Dialog.Alert">
+        <!-- 2. Use colorSurface to set the dialog's background color -->
+        <item name="colorSurface">@color/black</item>
+
+        <!-- 3. Use materialAlertDialogBodyTextStyle to style the message -->
+        <item name="materialAlertDialogBodyTextStyle">@style/AlertDialogBodyTextStyle</item>
+        <item name="backgroundColor">@color/black</item>
+
+        <!-- 4. Style the buttons using buttonBarPositive/Negative/NeutralButtonStyle -->
+        <item name="buttonBarPositiveButtonStyle">@style/AlertDialogButtonStyle</item>
+        <item name="buttonBarNegativeButtonStyle">@style/AlertDialogButtonStyle</item>
+        <item name="buttonBarNeutralButtonStyle">@style/AlertDialogButtonStyle</item>
+    </style>
+
+    <!-- A new style for the dialog's body text -->
+    <style name="AlertDialogBodyTextStyle" parent="MaterialAlertDialog.Material3.Body.Text">
+        <item name="backgroundColor">@color/black</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">18sp</item>
+    </style>
+
+    <!-- Your button style is mostly fine, but let's ensure it's robust -->
+    <style name="AlertDialogButtonStyle" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:textSize">18sp</item>
+        <item name="backgroundColor">@color/black</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/white</item>
+    </style>
+
 </resources>
