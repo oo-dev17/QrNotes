@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.graphics.toColorInt
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -43,6 +44,14 @@ class ItemAdapter(
         //holder.descriptionTextView.text = String.format("%20.20s", qrNote.content)
         holder.uidTextView.text = qrNote.documentId
         holder.qrCodeTextView.text = qrNote.qrCode
+
+        if (position % 2 == 1) {
+            holder.itemView.setBackgroundColor("#FF191919".toColorInt());
+            //  holder.imageView.setBackgroundColor(Color.parseColor("#FFFFFF"));
+        } else {
+            holder.itemView.setBackgroundColor("#FF101010".toColorInt());
+            //  holder.imageView.setBackgroundColor(Color.parseColor("#FFFAF8FD"));
+        }
 
         // Set the click listener on the item view
         holder.itemView.setOnClickListener {
