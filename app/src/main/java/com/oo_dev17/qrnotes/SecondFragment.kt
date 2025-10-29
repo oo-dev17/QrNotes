@@ -237,7 +237,7 @@ class SecondFragment : Fragment() {
             imageAdapter.onItemLongClick = { imageItem, position ->
                 when (imageItem) {
                     is ImageItem.FileImage -> {
-                        val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
+                        val builder = AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
                         builder.setTitle("QrNote Image Menu")
                             .setMessage("What do you want to do with img ${imageItem.file.name} ?")
                             .setNeutralButton("Make gallery picture") { dialog, _ ->
@@ -376,7 +376,7 @@ class SecondFragment : Fragment() {
                     }
                 }
                 stringAdapter.onItemLongClick = { fileName, position ->
-                    val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
+                    val builder = AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
                     builder.setTitle("QrNote Doc Options")
                         .setMessage("What do you want to do with doc $fileName ?")
                         .setPositiveButton("Delete") { dialog, _ ->
@@ -564,8 +564,8 @@ class SecondFragment : Fragment() {
                 // --- THIS IS THE CORRECT PLACE FOR YOUR LOGIC ---
 
                 // 1. Add the file to your UI adapter
-                imageAdapter.imageItems.add(0, ImageItem.FileImage(imageFile))
-                imageAdapter.notifyItemInserted(0)
+                imageAdapter.imageItems.add(ImageItem.FileImage(imageFile))
+                imageAdapter.notifyItemInserted(imageAdapter.imageItems.size - 1)
 
                 // 2. Upload the file (which now has data) to Firebase
                 cachedFileHandler.uploadToCloud(
@@ -610,7 +610,7 @@ class SecondFragment : Fragment() {
                 val selectedImageUri: Uri? = data?.data
                 if (selectedImageUri != null) {
                     // Load the selected image into an ImageView or process it
-                    loadSelectedImage(selectedImageUri)
+                    storeSelectedImageInCloudAndCache(selectedImageUri)
                 }
             }
             if (requestCode == REQUEST_CODE_CAMERA && resultCode == Activity.RESULT_OK) {
@@ -701,20 +701,39 @@ class SecondFragment : Fragment() {
         Snackbar.make(requireView(), "Image captured from camera", Snackbar.LENGTH_SHORT).show()
     }
 
-    private fun loadSelectedImage(imageUri: Uri) {
-        // Example: Load the image into an ImageView
-        val imageView: ImageView = requireView().findViewById(R.id.imageView)
-        imageView.setImageURI(imageUri)
-
-        requireContext().contentResolver.openInputStream(imageUri)?.use { inputStream ->
-            val outputFile = File(qrNote!!.ImageSubfolder(), "${System.currentTimeMillis()}.jpg")
-            outputFile.outputStream().use { outputStream ->
-                inputStream.copyTo(outputStream)
+    private fun storeSelectedImageInCloudAndCache(imageUri: Uri) {
+        val outputFile: File? = try {
+            requireContext().contentResolver.openInputStream(imageUri)?.use { inputStream ->
+                val file = File(qrNote!!.ImageSubfolder(), "${System.currentTimeMillis()}.jpg")
+                file.outputStream().use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+                file // Return the newly created file
             }
+        } catch (e: IOException) {
+            Log.e("StoreImage", "Failed to copy image to cache", e)
+            null // Return null if there was an error
         }
 
-        // Optionally, save the URI or process the image further
-        Snackbar.make(requireView(), "Image selected: $imageUri", Snackbar.LENGTH_SHORT).show()
+        // Check if the file was created successfully
+        if (outputFile != null && outputFile.exists()) {
+            // Update UI by adding the new image to the adapter
+            imageAdapter.imageItems.add(imageAdapter.imageItems.size - 2, ImageItem.FileImage(outputFile))
+            imageAdapter.notifyItemInserted(imageAdapter.imageItems.size - 3)
+
+            // Upload the file to Firebase Cloud Storage
+            cachedFileHandler.uploadToCloud(
+                qrNote!!,
+                outputFile,
+                CachedFileHandler.Category.Images
+            )
+
+            // Notify the user of success
+            Snackbar.make(requireView(), "Image uploaded successfully.", Snackbar.LENGTH_SHORT).show()
+        } else {
+            // Notify the user of failure
+            Snackbar.make(requireView(), "Failed to save image.", Snackbar.LENGTH_SHORT).show()
+        }
     }
 
     private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
@@ -770,7 +789,7 @@ class SecondFragment : Fragment() {
 
         tileTextView.setOnClickListener {
 
-            val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
+            val builder = AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
             builder.setTitle("Change Title")
             val input = EditText(requireContext()).apply {
                 setText(qrNote!!.title)

@@ -46,10 +46,10 @@ class ItemAdapter(
         holder.qrCodeTextView.text = qrNote.qrCode
 
         if (position % 2 == 1) {
-            holder.itemView.setBackgroundColor("#FF191919".toColorInt());
+            holder.itemView.setBackgroundColor("#FF222222".toColorInt());
             //  holder.imageView.setBackgroundColor(Color.parseColor("#FFFFFF"));
         } else {
-            holder.itemView.setBackgroundColor("#FF101010".toColorInt());
+            holder.itemView.setBackgroundColor("#FF000000".toColorInt());
             //  holder.imageView.setBackgroundColor(Color.parseColor("#FFFAF8FD"));
         }
 
