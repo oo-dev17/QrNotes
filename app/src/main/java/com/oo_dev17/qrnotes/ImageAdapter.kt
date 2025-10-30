@@ -10,7 +10,7 @@ import com.oo_dev17.qrnotes.ImageItem
 import com.oo_dev17.qrnotes.R
 import java.io.File
 
-class ImageAdapter(public val imageItems: MutableList<ImageItem>) :
+class ImageAdapter(public val imageItems: MutableList<ImageItem.FileImage>) :
     RecyclerView.Adapter<ImageAdapter.ImageViewHolder>() {
 
     var onItemClick: ((ImageItem) -> Unit)? = null

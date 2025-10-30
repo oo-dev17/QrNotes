@@ -1,10 +1,9 @@
 package com.oo_dev17.qrnotes
 
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.recyclerview.widget.RecyclerView
 import androidx.core.graphics.toColorInt
+import androidx.recyclerview.widget.RecyclerView
 
 class DocumentAdapter(val stringList: MutableList<String>) :
     RecyclerView.Adapter<DocumentViewHolder>() {
@@ -31,12 +30,9 @@ class DocumentAdapter(val stringList: MutableList<String>) :
             //  holder.imageView.setBackgroundColor(Color.parseColor("#FFFAF8FD"));
         }
 
-        holder.logoTextView.text =
-            if (charPosition == -1) "-" else stringEntry.substring(
-                charPosition + 1,
-                stringEntry.length
-            )
-                .uppercase()
+        holder.logoTextView.text = if (charPosition == -1) "-" else stringEntry.substring(
+            charPosition + 1, stringEntry.length
+        ).uppercase()
 
         // Set click listener for the item
         holder.itemView.setOnClickListener {

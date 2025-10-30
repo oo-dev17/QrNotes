@@ -22,27 +22,25 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
 import com.oo_dev17.qrnotes.databinding.ActivityMainBinding
 import java.io.File
+import androidx.core.view.WindowCompat
 
 class MainActivity : AppCompatActivity() {
     private lateinit var sharedDb: FirebaseFirestore
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
     private val sharedViewModel: SecondSharedViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         signInAnonymously()
         binding = ActivityMainBinding.inflate(layoutInflater)
+
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
 
-
-
-        // Inflate the floating view
-        val floatingView = layoutInflater.inflate(R.layout.floating_image_add, null)
-
-        val navHostFragment =
-            supportFragmentManager.findFragmentById(R.id.nav_host_fragment_content_main) as NavHostFragment
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         appBarConfiguration = AppBarConfiguration(navController.graph)
         setupActionBarWithNavController(navController, appBarConfiguration)

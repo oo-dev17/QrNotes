@@ -22,7 +22,6 @@ import android.view.ViewGroup
 import android.webkit.MimeTypeMap
 import android.widget.EditText
 import android.widget.ImageView
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -32,8 +31,8 @@ import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.ListenerRegistration
@@ -56,6 +55,7 @@ class SecondFragment : Fragment() {
 
     private lateinit var cachedFileHandler: CachedFileHandler
     private lateinit var imageAdapter: ImageAdapter
+    private lateinit var buttonAdapter: ButtonAdapter
     private lateinit var stringAdapter: DocumentAdapter
     private var qrNote: QrNote? = null
     private var _binding: FragmentSecondBinding? = null
@@ -83,8 +83,8 @@ class SecondFragment : Fragment() {
 
         _binding = FragmentSecondBinding.inflate(inflater, container, false)
 
-        binding.textviewSecond.setTextIsSelectable(true)
-        val textviewSecond: EditText = binding.textviewSecond
+        binding.edittextSecond.setTextIsSelectable(true)
+        val textviewSecond: EditText = binding.edittextSecond
         textviewSecond.setTextIsSelectable(true)
         textviewSecond.autoLinkMask = Linkify.WEB_URLS
         val titleText = binding.tileText
@@ -103,7 +103,7 @@ class SecondFragment : Fragment() {
             }
             // Use the QrNote
             if (qrNote != null) {
-                binding.textviewSecond.text =
+                binding.edittextSecond.text =
                     Editable.Factory.getInstance().newEditable(qrNote!!.content)
                 titleText.text = qrNote?.title ?: "No title"
                 binding.qrCode.text = "QR:${qrNote!!.qrCode}"
@@ -191,23 +191,29 @@ class SecondFragment : Fragment() {
         assertQrNoteIsInStorageRef()
 
         viewLifecycleOwner.lifecycleScope.launch {
-            val images =
+            val imageFiles =
                 withContext(Dispatchers.IO) { qrNote!!.retrieveImageFiles(cachedFileHandler) }
             // Get the RecyclerView for images
-            val recyclerViewImages: RecyclerView = binding.recyclerViewImages
-            val pictures = images.map { ImageItem.FileImage(it) }
+            val imageItems = imageFiles.map { ImageItem.FileImage(it) }.toMutableList()
 
+            imageAdapter = ImageAdapter(imageItems) // Handles the images
+            buttonAdapter = ButtonAdapter()
+            val concatAdapter =
+                ConcatAdapter(imageAdapter, buttonAdapter)
             // Set up the RecyclerView with a horizontal LinearLayoutManager
-            recyclerViewImages.layoutManager =
+            binding.recyclerViewImages.layoutManager =
                 LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
             // Create and set the adapter
-            val imagesItems = pictures +
-                    ImageItem.ResourceImage(R.drawable.plus_sign) +
-                    ImageItem.ResourceImage(android.R.drawable.ic_menu_camera)
-            imageAdapter = ImageAdapter(imagesItems.toMutableList())
-            recyclerViewImages.adapter = imageAdapter
 
+            binding.recyclerViewImages.adapter = concatAdapter
 
+            buttonAdapter.onAddCameraClick = {
+                openCamera() // Your function to open the camera
+            }
+
+            buttonAdapter.onAddGalleryClick = {
+                selectImageFromGallery() // Your function to open the gallery
+            }
 
             imageAdapter.onItemClick = { imageItem ->
                 when (imageItem) {
@@ -332,17 +338,21 @@ class SecondFragment : Fragment() {
                         CachedFileHandler.Category.Documents
                     )
 
-                val recyclerViewFiles: RecyclerView = binding.recyclerViewFiles
-
-                // Set up the RecyclerView with a horizontal LinearLayoutManager
-                recyclerViewFiles.layoutManager =
-                    LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false)
 
                 val stringList = listResult.map { it }.toMutableList()
-                var stringAdapter = DocumentAdapter(stringList)
-                if (stringAdapter.itemCount == 0)
-                    stringAdapter = DocumentAdapter(mutableListOf("No documents found"))
-                recyclerViewFiles.adapter = stringAdapter
+                if (stringList.isEmpty()) {
+                    // If the list is empty, hide the RecyclerView and show the placeholder text.
+                    binding.recyclerViewFiles.visibility = View.GONE
+                    binding.textViewEmptyDocuments.visibility = View.VISIBLE
+                } else {
+                    // If the list has items, show the RecyclerView and hide the placeholder.
+                    binding.recyclerViewFiles.visibility = View.VISIBLE
+                    binding.textViewEmptyDocuments.visibility = View.GONE
+                }
+                stringAdapter = DocumentAdapter(stringList)
+                binding.recyclerViewFiles.adapter = stringAdapter
+                binding.recyclerViewFiles.layoutManager =
+                    LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false)
 
                 // Commenting out statistics part as properties don't exist on QrNote yet.
                 /*
@@ -460,11 +470,11 @@ class SecondFragment : Fragment() {
                 requireActivity(), arrayOf(permission), REQUEST_CODE_WRITE_EXTERNAL_STORAGE
             )
             if (openGallery)
-                openGallery()
+                selectImageFromGallery()
         } else {
             // Permission already granted, open the gallery
             if (openGallery)
-                openGallery()
+                selectImageFromGallery()
         }
     }
 
@@ -497,7 +507,7 @@ class SecondFragment : Fragment() {
         if (requestCode == REQUEST_CODE_WRITE_EXTERNAL_STORAGE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // Permission granted, open the gallery
-                openGallery()
+                selectImageFromGallery()
             } else {
                 // Permission denied, show a message
                 _binding!!.recyclerViewImages.post {
@@ -594,7 +604,7 @@ class SecondFragment : Fragment() {
 
     private val REQUEST_CODE_PICK_IMAGE = 101
 
-    private fun openGallery() {
+    private fun selectImageFromGallery() {
         val intent = Intent(Intent.ACTION_PICK)
         intent.type = "image/*"
         startActivityForResult(intent, REQUEST_CODE_PICK_IMAGE)
@@ -676,15 +686,12 @@ class SecondFragment : Fragment() {
                         ).show()
                     }.addOnSuccessListener { taskSnapshot ->
                         Toast.makeText(context, "Upload successful of $fileName", Toast.LENGTH_SHORT).show()
-                        if (::stringAdapter.isInitialized) {
-                            stringAdapter.stringList.add(fileName)
-                            stringAdapter.notifyDataSetChanged()
-                        } else {
-                            Toast.makeText(
-                                context,
-                                "stringAdapter not initialized",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                        val wasEmpty = stringAdapter.itemCount == 0
+                        stringAdapter.stringList.add(fileName)
+                        stringAdapter.notifyItemInserted(stringAdapter.itemCount - 1)
+                        if (wasEmpty) {
+                            binding.recyclerViewFiles.visibility = View.VISIBLE
+                            binding.textViewEmptyDocuments.visibility = View.GONE
                         }
                     }
                 }
@@ -718,8 +725,8 @@ class SecondFragment : Fragment() {
         // Check if the file was created successfully
         if (outputFile != null && outputFile.exists()) {
             // Update UI by adding the new image to the adapter
-            imageAdapter.imageItems.add(imageAdapter.imageItems.size - 2, ImageItem.FileImage(outputFile))
-            imageAdapter.notifyItemInserted(imageAdapter.imageItems.size - 3)
+            imageAdapter.imageItems.addLast( ImageItem.FileImage(outputFile))
+            imageAdapter.notifyItemInserted(imageAdapter.imageItems.size - 1)
 
             // Upload the file to Firebase Cloud Storage
             cachedFileHandler.uploadToCloud(
@@ -780,14 +787,7 @@ class SecondFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-
-        stringAdapter = DocumentAdapter(
-            ArrayList() // Start with an empty list
-        )
-
-        val tileTextView: TextView = binding.tileText
-
-        tileTextView.setOnClickListener {
+            binding.tileText.setOnClickListener {
 
             val builder = AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
             builder.setTitle("Change Title")
@@ -870,7 +870,7 @@ class SecondFragment : Fragment() {
 
     private fun saveText() {
         Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
-            .update(qrNote!!::content.name, _binding!!.textviewSecond.text.toString())
+            .update(qrNote!!::content.name, _binding!!.edittextSecond.text.toString())
     }
 
     companion object {
