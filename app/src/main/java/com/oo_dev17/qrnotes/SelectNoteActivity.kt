@@ -1,19 +1,23 @@
 package com.oo_dev17.qrnotes
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
+import com.google.firebase.storage.storage
 import com.oo_dev17.qrnotes.databinding.ActivitySelectNoteBinding
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlin.reflect.KFunction1
 
-class SelectNoteActivity : AppCompatActivity(), ItemClickListener {
+class SelectNoteActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySelectNoteBinding
     private lateinit var itemAdapter: ItemAdapter
@@ -48,16 +52,20 @@ class SelectNoteActivity : AppCompatActivity(), ItemClickListener {
             finish() // Close the activity if no file was received
         }
     }
-    fun itemAdapterOnItemClick (selectedQrNote: QrNote) = {
+    private fun onNoteClicked(selectedQrNote: QrNote) {
         // A note has been chosen! Now process the file.
         processSharedFile(selectedQrNote)
     }
+    fun itemAdapterOnItemClick(selectedQrNote: QrNote) = {
+        // A note has been chosen! Now process the file.
+        processSharedFile(selectedQrNote)
+    }
+
     private fun setupRecyclerView() {
-        itemAdapter = ItemAdapter(ArrayList(), this, null, null) // Start with an empty list
+        itemAdapter = ItemAdapter(ArrayList(), null, null, null) // Start with an empty list
+        itemAdapter.shortClickListener =  this::onNoteClicked
         binding.recyclerViewNoteSelection.adapter = itemAdapter
         binding.recyclerViewNoteSelection.layoutManager = LinearLayoutManager(this)
-
-
     }
 
     private fun loadNotes() {
@@ -67,13 +75,33 @@ class SelectNoteActivity : AppCompatActivity(), ItemClickListener {
                 val notes = snapshot.toObjects(QrNote::class.java)
                 itemAdapter.updateList(notes) // Update the adapter with the fetched notes
             } catch (e: Exception) {
-                Toast.makeText(this@SelectNoteActivity, "Failed to load notes: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@SelectNoteActivity,
+                    "Failed to load notes: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
 
     private fun processSharedFile(targetNote: QrNote) {
         Toast.makeText(this, "Adding file to '${targetNote.title}'...", Toast.LENGTH_LONG).show()
+
+        var cachedFileHandler = CachedFileHandler(Firebase.storage.reference, this)
+
+        if (cachedFileHandler.storeSelectedImageInCloudAndCache(
+                sharedFileUri!!,
+                targetNote,
+                null
+            )
+        ) {
+            Toast.makeText(this, "File added to '${targetNote.title}'", Toast.LENGTH_LONG).show()
+            setResult(Activity.RESULT_OK)
+        } else {
+            Toast.makeText(this, "Failed to add file to '${targetNote.title}'", Toast.LENGTH_LONG)
+                .show()
+            setResult(Activity.RESULT_CANCELED)
+        }
 
         // HERE: You would reuse your existing file handling logic.
         // You'll need instances of CachedFileHandler, FileCache, etc.
@@ -87,17 +115,8 @@ class SelectNoteActivity : AppCompatActivity(), ItemClickListener {
         // After processing, finish this activity
         finish()
     }
-    override fun onItemClicked(qrNote: QrNote) {
-        // A note has been chosen! Now process the file.
-        processSharedFile(qrNote)
-    }
-
-
-    override fun showQrNoteOptions(qrNote: QrNote) {
-        TODO("Not yet implemented")
-    }
-
-    override fun deleteQrNote(qrNote: QrNote) {
-        TODO("Not yet implemented")
+    override fun onBackPressed() {
+        setResult(Activity.RESULT_CANCELED)
+        super.onBackPressed()
     }
 }

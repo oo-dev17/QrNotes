@@ -1,9 +1,11 @@
 package com.oo_dev17.qrnotes
 
+import ImageAdapter
 import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.core.net.toUri
+import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.storage.StorageReference
 import kotlinx.coroutines.tasks.await
 import java.io.File
@@ -63,6 +65,41 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
                 println("Upload failed: " + fail.message)
                 Log.e("CachedFileHandler", "uploadToCloud failed: " + fail.message)
             }
+    }
+    public fun storeSelectedImageInCloudAndCache(imageUri: Uri, qrNote: QrNote, imageAdapter: ImageAdapter?): Boolean {
+        val outputFile: File? = try {
+            context.contentResolver.openInputStream(imageUri)?.use { inputStream ->
+                val file = File(qrNote!!.ImageSubfolder(), "${System.currentTimeMillis()}.jpg")
+                file.outputStream().use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+                file // Return the newly created file
+            }
+        } catch (e: IOException) {
+            Log.e("StoreImage", "Failed to copy image to cache", e)
+            null // Return null if there was an error
+        }
+
+        // Check if the file was created successfully
+        if (outputFile != null && outputFile.exists()) {
+            // Update UI by adding the new image to the adapter
+            imageAdapter?.imageItems?.add( ImageItem.FileImage(outputFile))
+            imageAdapter?.notifyItemInserted(imageAdapter.imageItems.size - 1)
+
+            // Upload the file to Firebase Cloud Storage
+            uploadToCloud(
+                qrNote!!,
+                outputFile,
+                CachedFileHandler.Category.Images
+            )
+return true
+            // Notify the user of success
+
+        } else {
+            return false
+            // Notify the user of failure
+
+        }
     }
 
     fun copyFileToCache(

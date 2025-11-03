@@ -14,14 +14,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.collections.addAll
+import kotlin.reflect.KFunction1
+import kotlin.text.clear
 
 class ItemAdapter(
-    var allQrNotes: List<QrNote>,
-    private val itemLongClickListener: ItemClickListener,
+    var allQrNotes: MutableList<QrNote>,
+    private val itemLongClickListener: ItemClickListener?,
     private val coroutineScope: CoroutineScope?,
     private val cachedFileHandler: CachedFileHandler?
 ) : RecyclerView.Adapter<ItemAdapter.ItemViewHolder>() {
 
+     var shortClickListener: ((QrNote) -> Unit)? = null
     private var itemView: View? = null
 
     class ItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -55,6 +59,11 @@ class ItemAdapter(
 
         // Set the click listener on the item view
         holder.itemView.setOnClickListener {
+
+            if (shortClickListener!= null) {
+                shortClickListener?.invoke(qrNote)
+                return@setOnClickListener
+            }
             // Create a Bundle
             val bundle = Bundle()
             // Put the QrNote into the Bundle
@@ -65,12 +74,12 @@ class ItemAdapter(
                 .navigate(R.id.action_FirstFragment_to_SecondFragment, bundle)
         }
         holder.itemView.setOnLongClickListener {
-            itemLongClickListener.showQrNoteOptions(qrNote)
+            itemLongClickListener?.showQrNoteOptions(qrNote)
             true // Consume the long click event
         }
-        coroutineScope.launch {
+        coroutineScope?.launch {
             val firstPics = withContext(Dispatchers.IO) {
-                qrNote.retrieveImageFiles(cachedFileHandler) // Perform network/disk operation on IO thread
+                qrNote.retrieveImageFiles(cachedFileHandler!!) // Perform network/disk operation on IO thread
             }
             withContext(Dispatchers.Main) { //go back to main thread
                 // Find the picture with the specified name. Returns null if not found.
@@ -83,7 +92,14 @@ class ItemAdapter(
             }
         }
     }
-
+    fun updateList(newList: List<QrNote>) {
+        // 1. Clear the old list of notes.
+        allQrNotes.clear()
+        // 2. Add all the new notes to the list.
+        allQrNotes.addAll(newList)
+        // 3. Notify the adapter that the entire dataset has changed.
+        notifyDataSetChanged()
+    }
 
 override fun getItemCount(): Int {
     return allQrNotes.size

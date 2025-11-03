@@ -263,7 +263,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         })
     }
 
-    private fun filterQrNotes(query: String): List<QrNote> {
+    private fun filterQrNotes(query: String): MutableList<QrNote> {
 
         return qrNotes.filter { qrNote ->
             qrNote.title?.contains(query, ignoreCase = true) == true ||
@@ -272,7 +272,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                         query,
                         ignoreCase = true
                     ) == true //|| qrNote.allDocuments.any({ it.contains(query, ignoreCase = true) })
-        }
+        }.toMutableList()
     }
 
     private fun getAllQrNotes(callback: (List<QrNote>) -> Unit) {

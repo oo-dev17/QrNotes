@@ -620,7 +620,11 @@ class SecondFragment : Fragment() {
                 val selectedImageUri: Uri? = data?.data
                 if (selectedImageUri != null) {
                     // Load the selected image into an ImageView or process it
-                    storeSelectedImageInCloudAndCache(selectedImageUri)
+                  var cachedFileHandler = CachedFileHandler(storageRef, context)
+                    if(cachedFileHandler.storeSelectedImageInCloudAndCache(selectedImageUri, qrNote!!, imageAdapter))
+                        Snackbar.make(requireView(), "Image loaded!", Snackbar.LENGTH_SHORT).show()
+                    else
+                        Snackbar.make(requireView(), "Image failed to load!", Snackbar.LENGTH_SHORT).show()
                 }
             }
             if (requestCode == REQUEST_CODE_CAMERA && resultCode == Activity.RESULT_OK) {
@@ -708,40 +712,7 @@ class SecondFragment : Fragment() {
         Snackbar.make(requireView(), "Image captured from camera", Snackbar.LENGTH_SHORT).show()
     }
 
-    private fun storeSelectedImageInCloudAndCache(imageUri: Uri) {
-        val outputFile: File? = try {
-            requireContext().contentResolver.openInputStream(imageUri)?.use { inputStream ->
-                val file = File(qrNote!!.ImageSubfolder(), "${System.currentTimeMillis()}.jpg")
-                file.outputStream().use { outputStream ->
-                    inputStream.copyTo(outputStream)
-                }
-                file // Return the newly created file
-            }
-        } catch (e: IOException) {
-            Log.e("StoreImage", "Failed to copy image to cache", e)
-            null // Return null if there was an error
-        }
 
-        // Check if the file was created successfully
-        if (outputFile != null && outputFile.exists()) {
-            // Update UI by adding the new image to the adapter
-            imageAdapter.imageItems.addLast( ImageItem.FileImage(outputFile))
-            imageAdapter.notifyItemInserted(imageAdapter.imageItems.size - 1)
-
-            // Upload the file to Firebase Cloud Storage
-            cachedFileHandler.uploadToCloud(
-                qrNote!!,
-                outputFile,
-                CachedFileHandler.Category.Images
-            )
-
-            // Notify the user of success
-            Snackbar.make(requireView(), "Image uploaded successfully.", Snackbar.LENGTH_SHORT).show()
-        } else {
-            // Notify the user of failure
-            Snackbar.make(requireView(), "Failed to save image.", Snackbar.LENGTH_SHORT).show()
-        }
-    }
 
     private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
         if (result.contents == null) {
@@ -854,11 +825,14 @@ class SecondFragment : Fragment() {
         }
     }
     private fun updateUiWithNewData() {
-        // This function is now the single place where UI is updated.
-        binding.tileText.text = qrNote?.title
-        binding.tileText.requestFocus()
-        binding.qrCode.text = "QR: "+qrNote?.qrCode
+        try {
+            // This function is now the single place where UI is updated.
+            binding.tileText.text = qrNote?.title
+            binding.tileText.requestFocus()
+            binding.qrCode.text = "QR: " + qrNote?.qrCode
+        }catch (e: Exception){
 
+        }
 
         // ... update all other UI elements from the 'qrNote' object
     }
