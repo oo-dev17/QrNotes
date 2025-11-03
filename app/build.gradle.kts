@@ -62,6 +62,7 @@ dependencies {
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation("com.google.firebase:firebase-messaging:25.0.1")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation(libs.androidx.activity)
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")

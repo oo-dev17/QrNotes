@@ -28,7 +28,8 @@ class ButtonAdapter : RecyclerView.Adapter<ButtonAdapter.ButtonViewHolder>() {
 
     override fun onBindViewHolder(holder: ButtonViewHolder, position: Int) {
         val buttonType = buttonTypes[position]
-        val imageView = holder.itemView.findViewById<ImageView>(R.id.button_image)
+        //val imageView = holder.itemView.findViewById<ImageView>(R.id.button_image)
+        val imageView: ImageView = holder.itemView.findViewById(R.id.button_image)
 
         if (buttonType == "camera") {
             imageView.setImageResource(R.drawable.ic_menu_camera)

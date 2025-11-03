@@ -106,7 +106,7 @@ class SecondFragment : Fragment() {
                 binding.edittextSecond.text =
                     Editable.Factory.getInstance().newEditable(qrNote!!.content)
                 titleText.text = qrNote?.title ?: "No title"
-                binding.qrCode.text = "QR:${qrNote!!.qrCode}"
+                binding.qrCode.text = "QR: ${qrNote!!.qrCode}"
                 moveOrphanedPdfsToDocuments() // Move any orphaned PDFs on startup
             }
         }
@@ -857,7 +857,7 @@ class SecondFragment : Fragment() {
         // This function is now the single place where UI is updated.
         binding.tileText.text = qrNote?.title
         binding.tileText.requestFocus()
-        binding.qrCode.text = qrNote?.qrCode
+        binding.qrCode.text = "QR: "+qrNote?.qrCode
 
 
         // ... update all other UI elements from the 'qrNote' object

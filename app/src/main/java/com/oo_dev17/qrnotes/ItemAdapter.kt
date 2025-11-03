@@ -18,8 +18,8 @@ import kotlinx.coroutines.withContext
 class ItemAdapter(
     var allQrNotes: List<QrNote>,
     private val itemLongClickListener: ItemClickListener,
-    private val coroutineScope: CoroutineScope,
-    private val cachedFileHandler: CachedFileHandler
+    private val coroutineScope: CoroutineScope?,
+    private val cachedFileHandler: CachedFileHandler?
 ) : RecyclerView.Adapter<ItemAdapter.ItemViewHolder>() {
 
     private var itemView: View? = null
