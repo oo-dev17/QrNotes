@@ -243,7 +243,8 @@ class SecondFragment : Fragment() {
             imageAdapter.onItemLongClick = { imageItem, position ->
                 when (imageItem) {
                     is ImageItem.FileImage -> {
-                        val builder = AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
+                        val builder =
+                            AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
                         builder.setTitle("QrNote Image Menu")
                             .setMessage("What do you want to do with img ${imageItem.file.name} ?")
                             .setNeutralButton("Make gallery picture") { dialog, _ ->
@@ -338,7 +339,6 @@ class SecondFragment : Fragment() {
                         CachedFileHandler.Category.Documents
                     )
 
-
                 val stringList = listResult.map { it }.toMutableList()
                 if (stringList.isEmpty()) {
                     // If the list is empty, hide the RecyclerView and show the placeholder text.
@@ -386,7 +386,7 @@ class SecondFragment : Fragment() {
                     }
                 }
                 stringAdapter.onItemLongClick = { fileName, position ->
-                    val builder = AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
+                    val builder = AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
                     builder.setTitle("QrNote Doc Options")
                         .setMessage("What do you want to do with doc $fileName ?")
                         .setPositiveButton("Delete") { dialog, _ ->
@@ -620,11 +620,17 @@ class SecondFragment : Fragment() {
                 val selectedImageUri: Uri? = data?.data
                 if (selectedImageUri != null) {
                     // Load the selected image into an ImageView or process it
-                  var cachedFileHandler = CachedFileHandler(storageRef, context)
-                    if(cachedFileHandler.storeSelectedImageInCloudAndCache(selectedImageUri, qrNote!!, imageAdapter))
+                    var cachedFileHandler = CachedFileHandler(storageRef, context)
+                    if (cachedFileHandler.storeSelectedImageInCloudAndCache(
+                            selectedImageUri,
+                            qrNote!!,
+                            imageAdapter
+                        )
+                    )
                         Snackbar.make(requireView(), "Image loaded!", Snackbar.LENGTH_SHORT).show()
                     else
-                        Snackbar.make(requireView(), "Image failed to load!", Snackbar.LENGTH_SHORT).show()
+                        Snackbar.make(requireView(), "Image failed to load!", Snackbar.LENGTH_SHORT)
+                            .show()
                 }
             }
             if (requestCode == REQUEST_CODE_CAMERA && resultCode == Activity.RESULT_OK) {
@@ -649,12 +655,14 @@ class SecondFragment : Fragment() {
                     cursor?.moveToFirst()
                     cursor?.use {
                         if (it.moveToFirst()) {
-                            val displayName = it.getString(it.getColumnIndexOrThrow("_display_name"))
+                            val displayName =
+                                it.getString(it.getColumnIndexOrThrow("_display_name"))
 
                             // Check if the display name already has an extension
                             if (!displayName.contains(".")) {
                                 // If not, get the extension from the MIME type
-                                val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
+                                val extension =
+                                    MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
                                 // Append the extension to the display name
                                 fileName = "$displayName.$extension"
                             } else {
@@ -679,7 +687,8 @@ class SecondFragment : Fragment() {
                         return // Stop if local save failed
                     }
 
-                    val documentRef = storageRef.child(qrNote!!.documentId!!).child(CachedFileHandler.Category.Documents.name).child( fileName)
+                    val documentRef = storageRef.child(qrNote!!.documentId!!)
+                        .child(CachedFileHandler.Category.Documents.name).child(fileName)
                     val uploadTask = documentRef.putFile(uri)
 
                     uploadTask.addOnFailureListener { exception ->
@@ -689,7 +698,11 @@ class SecondFragment : Fragment() {
                             Toast.LENGTH_SHORT
                         ).show()
                     }.addOnSuccessListener { taskSnapshot ->
-                        Toast.makeText(context, "Upload successful of $fileName", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            "Upload successful of $fileName",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         val wasEmpty = stringAdapter.itemCount == 0
                         stringAdapter.stringList.add(fileName)
                         stringAdapter.notifyItemInserted(stringAdapter.itemCount - 1)
@@ -711,8 +724,6 @@ class SecondFragment : Fragment() {
         // Optionally, save the bitmap or process it further
         Snackbar.make(requireView(), "Image captured from camera", Snackbar.LENGTH_SHORT).show()
     }
-
-
 
     private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
         if (result.contents == null) {
@@ -758,9 +769,9 @@ class SecondFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-            binding.tileText.setOnClickListener {
+        binding.tileText.setOnClickListener {
 
-            val builder = AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
+            val builder = AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
             builder.setTitle("Change Title")
             val input = EditText(requireContext()).apply {
                 setText(qrNote!!.title)
@@ -785,7 +796,6 @@ class SecondFragment : Fragment() {
             }
             builder.show()
         }
-
 
         val docRef = Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
         firestoreListener = docRef.addSnapshotListener { snapshot, error ->
@@ -819,18 +829,23 @@ class SecondFragment : Fragment() {
                     // if the user rotates the screen or navigates back.
                     secondSharedViewModel.onActionHandled()
                 }
-                NoteAction.NONE -> { /* Do nothing, this is the idle state */ }
-                else -> { /* Do nothing */ }
+
+                NoteAction.NONE -> { /* Do nothing, this is the idle state */
+                }
+
+                else -> { /* Do nothing */
+                }
             }
         }
     }
+
     private fun updateUiWithNewData() {
         try {
             // This function is now the single place where UI is updated.
             binding.tileText.text = qrNote?.title
             binding.tileText.requestFocus()
             binding.qrCode.text = "QR: " + qrNote?.qrCode
-        }catch (e: Exception){
+        } catch (e: Exception) {
 
         }
 

@@ -54,8 +54,12 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
     }
 
     fun uploadToCloud(qrNote: QrNote, file: File, category: Category) {
-        storageRef.child(qrNote.documentId!!).child(category.name).child(file.name)
-            .putFile(file.toUri()).addOnSuccessListener { s ->
+        try {
+            val docId = qrNote.documentId!!
+            val child1 = storageRef.child(docId)
+            val child2 = child1.child(category.name)
+            val child = child2.child(file.name)
+            child.putFile(file.toUri()).addOnSuccessListener { s ->
                 println("Upload successful: " + file.name)
                 Log.i(
                     "CachedFileHandler",
@@ -65,8 +69,15 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
                 println("Upload failed: " + fail.message)
                 Log.e("CachedFileHandler", "uploadToCloud failed: " + fail.message)
             }
+            } catch (e: Exception) {
+            Log.e("CachedFileHandler", "uploadToCloud failed: " + e.message)
+        }
     }
-    public fun storeSelectedImageInCloudAndCache(imageUri: Uri, qrNote: QrNote, imageAdapter: ImageAdapter?): Boolean {
+
+    public fun storeSelectedImageInCloudAndCache(imageUri: Uri,
+                                                 qrNote: QrNote,
+                                                 imageAdapter: ImageAdapter?
+    ): Boolean {
         val outputFile: File? = try {
             context.contentResolver.openInputStream(imageUri)?.use { inputStream ->
                 val file = File(qrNote!!.ImageSubfolder(), "${System.currentTimeMillis()}.jpg")
@@ -83,7 +94,7 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
         // Check if the file was created successfully
         if (outputFile != null && outputFile.exists()) {
             // Update UI by adding the new image to the adapter
-            imageAdapter?.imageItems?.add( ImageItem.FileImage(outputFile))
+            imageAdapter?.imageItems?.add(ImageItem.FileImage(outputFile))
             imageAdapter?.notifyItemInserted(imageAdapter.imageItems.size - 1)
 
             // Upload the file to Firebase Cloud Storage
@@ -92,13 +103,11 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
                 outputFile,
                 CachedFileHandler.Category.Images
             )
-return true
+            return true
             // Notify the user of success
-
         } else {
             return false
             // Notify the user of failure
-
         }
     }
 
@@ -199,8 +208,8 @@ return true
         if (!folder.exists()) folder.mkdir()
         val folder2 = File(folder, category.name)
         if (!folder2.exists()) folder2.mkdir()
-        val file= File(folder2, fileName)
-        val name= file.name
+        val file = File(folder2, fileName)
+        val name = file.name
         return file
     }
 

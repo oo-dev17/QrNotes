@@ -52,10 +52,12 @@ class SelectNoteActivity : AppCompatActivity() {
             finish() // Close the activity if no file was received
         }
     }
+
     private fun onNoteClicked(selectedQrNote: QrNote) {
         // A note has been chosen! Now process the file.
         processSharedFile(selectedQrNote)
     }
+
     fun itemAdapterOnItemClick(selectedQrNote: QrNote) = {
         // A note has been chosen! Now process the file.
         processSharedFile(selectedQrNote)
@@ -63,7 +65,7 @@ class SelectNoteActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         itemAdapter = ItemAdapter(ArrayList(), null, null, null) // Start with an empty list
-        itemAdapter.shortClickListener =  this::onNoteClicked
+        itemAdapter.shortClickListener = this::onNoteClicked
         binding.recyclerViewNoteSelection.adapter = itemAdapter
         binding.recyclerViewNoteSelection.layoutManager = LinearLayoutManager(this)
     }
@@ -72,8 +74,19 @@ class SelectNoteActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val snapshot = Firebase.firestore.collection("qrNotes").get().await()
-                val notes = snapshot.toObjects(QrNote::class.java)
-                itemAdapter.updateList(notes) // Update the adapter with the fetched notes
+
+                val notes = snapshot.documents.map { document ->
+                    // 2. Convert the document's data to a QrNote object.
+                    //    At this point, its documentId property is still null.
+                    val note = document.toObject(QrNote::class.java)
+
+                    // 3. Manually get the document's ID and set it on the object.
+                    note?.documentId = document.id
+
+                    note
+                }.filterNotNull()
+
+                itemAdapter.updateList(notes)
             } catch (e: Exception) {
                 Toast.makeText(
                     this@SelectNoteActivity,
@@ -89,20 +102,37 @@ class SelectNoteActivity : AppCompatActivity() {
 
         var cachedFileHandler = CachedFileHandler(Firebase.storage.reference, this)
 
-        if (cachedFileHandler.storeSelectedImageInCloudAndCache(
-                sharedFileUri!!,
-                targetNote,
-                null
+        if (sharedFileUri.toString().uppercase().endsWith("PDF")) {
+            val file = cachedFileHandler.storeFileInCache(
+                targetNote.documentId!!,
+                CachedFileHandler.Category.Documents,
+                sharedFileUri.toString().substringAfterLast("/"),
+                sharedFileUri!!
             )
-        ) {
-            Toast.makeText(this, "File added to '${targetNote.title}'", Toast.LENGTH_LONG).show()
+            cachedFileHandler.uploadToCloud(targetNote, file, CachedFileHandler.Category.Documents)
+            Toast.makeText(this, "PDF added to '${targetNote.title}'", Toast.LENGTH_LONG)
+                .show()
             setResult(Activity.RESULT_OK)
         } else {
-            Toast.makeText(this, "Failed to add file to '${targetNote.title}'", Toast.LENGTH_LONG)
-                .show()
-            setResult(Activity.RESULT_CANCELED)
+            if (cachedFileHandler.storeSelectedImageInCloudAndCache(
+                    sharedFileUri!!,
+                    targetNote,
+                    null
+                )
+            ) {
+                Toast.makeText(this, "Image added to '${targetNote.title}'", Toast.LENGTH_LONG)
+                    .show()
+                setResult(Activity.RESULT_OK)
+            } else {
+                Toast.makeText(
+                    this,
+                    "Failed to add image to '${targetNote.title}'",
+                    Toast.LENGTH_LONG
+                )
+                    .show()
+                setResult(Activity.RESULT_CANCELED)
+            }
         }
-
         // HERE: You would reuse your existing file handling logic.
         // You'll need instances of CachedFileHandler, FileCache, etc.
         // This is a simplified example.
@@ -115,6 +145,7 @@ class SelectNoteActivity : AppCompatActivity() {
         // After processing, finish this activity
         finish()
     }
+
     override fun onBackPressed() {
         setResult(Activity.RESULT_CANCELED)
         super.onBackPressed()
