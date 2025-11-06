@@ -195,15 +195,6 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         super.onActivityResult(requestCode, resultCode, data)
     }
 
-    private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
-        if (result.contents == null) {
-            Toast.makeText(requireContext(), "Scan cancelled", Toast.LENGTH_SHORT).show()
-        } else {
-            val scannedData = result.contents // Get the scanned QR code data
-            Toast.makeText(requireContext(), "Scanned: $scannedData", Toast.LENGTH_SHORT).show()
-            binding.searchText.setText(scannedData.toString())
-        }
-    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -248,9 +239,9 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         binding.searchText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
 
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+            override fun onTextChanged(needle: CharSequence?, start: Int, before: Int, count: Int) {
 
-                val query = s.toString().trim()
+                val query = needle.toString().trim()
                 if (query.isEmpty()) {
                     itemAdapter.allQrNotes = qrNotes
                 } else {
@@ -268,10 +259,11 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         return qrNotes.filter { qrNote ->
             qrNote.title?.contains(query, ignoreCase = true) == true ||
                     qrNote.content?.contains(query, ignoreCase = true) == true ||
+                    qrNote.qrCode.contains(query, ignoreCase = true) ||
                     qrNote.documentId?.contains(
-                        query,
-                        ignoreCase = true
-                    ) == true //|| qrNote.allDocuments.any({ it.contains(query, ignoreCase = true) })
+                query,
+                ignoreCase = true
+            ) == true //|| qrNote.allDocuments.any({ it.contains(query, ignoreCase = true) })
         }.toMutableList()
     }
 
