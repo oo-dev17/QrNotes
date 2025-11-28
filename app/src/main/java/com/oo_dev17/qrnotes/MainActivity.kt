@@ -1,6 +1,5 @@
 package com.oo_dev17.qrnotes
 
-import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -10,34 +9,39 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.navigation.findNavController
-import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
-import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.firestore
 import com.oo_dev17.qrnotes.databinding.ActivityMainBinding
 import java.io.File
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.setPadding
+import com.google.firebase.Firebase
+import kotlin.jvm.java
 
 class MainActivity : AppCompatActivity() {
     private lateinit var sharedDb: FirebaseFirestore
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var binding: ActivityMainBinding
+    private lateinit var auth: FirebaseAuth
     private val sharedViewModel: SecondSharedViewModel by viewModels()
+    private val authStateListener: FirebaseAuth.AuthStateListener
+        get() = FirebaseAuth.AuthStateListener { firebaseAuth ->
+            updateToolbarTitle(firebaseAuth.currentUser)
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        signInAnonymously()
+
+        auth = FirebaseAuth.getInstance()
         binding = ActivityMainBinding.inflate(layoutInflater)
 
         setContentView(binding.root)
@@ -76,6 +80,32 @@ class MainActivity : AppCompatActivity() {
             //create a new document
         }
     }
+    override fun onStart() {
+        super.onStart()
+        // Start listening for authentication state changes
+        auth.addAuthStateListener(authStateListener)
+    }
+    override fun onStop() {
+        super.onStop()
+        // Stop listening to avoid memory leaks
+        auth.removeAuthStateListener(authStateListener)
+    }
+    private fun updateToolbarTitle(user: com.google.firebase.auth.FirebaseUser?) {
+        val baseTitle = "QrNotes"
+        if (user != null) {
+            // User is signed in. Use their display name, or fall back to email.
+            val displayName = user.displayName?.ifEmpty { user.email } ?: user.email
+            if (!displayName.isNullOrBlank()) {
+                supportActionBar?.title = "$baseTitle - $displayName"
+            } else {
+                supportActionBar?.title = "$baseTitle - displayName is null" // Fallback if no name/email
+            }
+        } else {
+            // No user is signed in
+            supportActionBar?.title = "$baseTitle - No user"
+        }
+    }
+
 
     private fun handleSendImage(intent: Intent) {
         (intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM))?.let {
@@ -87,20 +117,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    val auth = FirebaseAuth.getInstance()
 
-    fun signInAnonymously() {
-        auth.signInAnonymously()
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    Log.d("FirebaseAuth", "Anonyme Anmeldung erfolgreich")
-                    val user = auth.currentUser
-                    Log.d("FirebaseAuth", "Anonyme Benutzer-ID: ${user?.uid}")
-                } else {
-                    Log.e("FirebaseAuth", "Fehler bei der anonymen Anmeldung", task.exception)
-                }
-            }
-    }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -149,10 +166,15 @@ class MainActivity : AppCompatActivity() {
 
                 true // Return true to indicate the click was handled
             }
+            R.id.action_login->{
+                val intent = Intent(this, LoginActivity::class.java)
+                startActivity(intent)
+                true
+            }
             R.id.action_settings -> {
                 val totalCacheSizeBytes = getCacheSize(this)
 
-                val builder = androidx.appcompat.app.AlertDialog.Builder(this,R.style.AlertDialogTheme)
+                val builder = AlertDialog.Builder(this,R.style.AlertDialogTheme)
                 val formattedCacheSize = formatSize(totalCacheSizeBytes)
                 builder.setTitle("QrNote App Options")
                     .setMessage("Cache Size $formattedCacheSize\nCache folder: ${cacheDir.absolutePath}" )
@@ -176,7 +198,6 @@ class MainActivity : AppCompatActivity() {
 
         }
     }
-
     override fun onSupportNavigateUp(): Boolean {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         return navController.navigateUp(appBarConfiguration)

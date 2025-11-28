@@ -12,4 +12,9 @@
         android:orderInCategory="100"
         android:title="@string/action_scanNewQrCode"
         app:showAsAction="never" />
+    <item
+    android:id="@+id/action_login"
+    android:orderInCategory="100"
+    android:title="@string/action_login"
+    app:showAsAction="never" />
 </menu>
