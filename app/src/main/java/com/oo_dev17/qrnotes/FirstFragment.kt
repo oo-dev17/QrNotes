@@ -55,6 +55,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        auth = Firebase.auth
         _binding = FragmentFirstBinding.inflate(inflater, container, false)
         checkStoragePermission()
 
