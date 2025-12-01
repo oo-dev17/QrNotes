@@ -23,6 +23,7 @@ import java.io.File
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 import kotlin.jvm.java
 
 class MainActivity : AppCompatActivity() {
@@ -71,8 +72,10 @@ class MainActivity : AppCompatActivity() {
                 handleSendText(intent)
             }
         }
+        updateToolbarTitle(FirebaseAuth.getInstance().currentUser)
     }
-    val TAG="MainActivity"
+
+    val TAG = "MainActivity"
     private fun handleSendText(intent: Intent) {
         intent.getStringExtra(Intent.EXTRA_TEXT)?.let {
             // Update UI to reflect text being shared
@@ -80,32 +83,35 @@ class MainActivity : AppCompatActivity() {
             //create a new document
         }
     }
+
     override fun onStart() {
         super.onStart()
         // Start listening for authentication state changes
         auth.addAuthStateListener(authStateListener)
     }
+
     override fun onStop() {
         super.onStop()
         // Stop listening to avoid memory leaks
         auth.removeAuthStateListener(authStateListener)
     }
+
     private fun updateToolbarTitle(user: com.google.firebase.auth.FirebaseUser?) {
-        val baseTitle = "QrNotes"
+
         if (user != null) {
             // User is signed in. Use their display name, or fall back to email.
             val displayName = user.displayName?.ifEmpty { user.email } ?: user.email
             if (!displayName.isNullOrBlank()) {
-                supportActionBar?.title = "$baseTitle - $displayName"
+                supportActionBar?.subtitle = displayName
             } else {
-                supportActionBar?.title = "$baseTitle - displayName is null" // Fallback if no name/email
+                supportActionBar?.subtitle =
+                    "displayName is null" // Fallback if no name/email
             }
         } else {
             // No user is signed in
-            supportActionBar?.title = "$baseTitle - No user"
+            supportActionBar?.subtitle = "No user!"
         }
     }
-
 
     private fun handleSendImage(intent: Intent) {
         (intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM))?.let {
@@ -117,13 +123,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         // Inflate the menu; this adds items to the action bar if it is present.
         menuInflater.inflate(R.menu.menu_main, menu)
         return true
     }
+
     fun getCacheSize(context: Context): Long {
         var size: Long = 0
         // context.cacheDir gives you the path to your app's internal cache
@@ -153,6 +158,7 @@ class MainActivity : AppCompatActivity() {
         val gb = mb / 1024
         return String.format("%.2f GB", gb.toFloat())
     }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
@@ -166,24 +172,69 @@ class MainActivity : AppCompatActivity() {
 
                 true // Return true to indicate the click was handled
             }
-            R.id.action_login->{
+
+            R.id.action_login -> {
                 val intent = Intent(this, LoginActivity::class.java)
                 startActivity(intent)
                 true
             }
+            R.id.action_logout -> {
+                FirebaseAuth.getInstance().signOut()
+                true
+            }
+            R.id.action_quitApp -> {
+                finish()
+                true
+            }
+            R.id.action_copyOldNotes -> {
+                val notesCollection = FirestoreManager.getUserNotesCollection()
+                if (notesCollection == null) {
+                    Toast.makeText(
+                        this,
+                        "User not logged in? Notes empty",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return true
+                }
+                Firebase.firestore.collection("qrNotes").get().addOnSuccessListener { result ->
+
+                    result.forEach { documentSnapshot ->
+                        val qrNote = documentSnapshot.toObject(QrNote::class.java)
+                        qrNote.documentId = documentSnapshot.id
+                        Log.d(
+                            "FirestoreAccess",
+                            "QrNote found: Title:${qrNote.title},Content:${qrNote.content}"
+                        )
+                        notesCollection.add(qrNote).addOnSuccessListener { docRef ->
+                            Log.d("FirestoreAccess", "Note added with ID: ${docRef.id}")
+                        }
+                            .addOnFailureListener { exception ->
+                                Log.w("Firestore", "Error getting QrNotes", exception)
+                            }
+                    }
+                }.addOnFailureListener { exception ->
+                    Log.w("Firestore", "Error getting QrNotes", exception)
+                }
+                true
+            }
+
             R.id.action_settings -> {
                 val totalCacheSizeBytes = getCacheSize(this)
-
-                val builder = AlertDialog.Builder(this,R.style.AlertDialogTheme)
+                val builder = AlertDialog.Builder(this, R.style.AlertDialogTheme)
                 val formattedCacheSize = formatSize(totalCacheSizeBytes)
                 builder.setTitle("QrNote App Options")
-                    .setMessage("Cache Size $formattedCacheSize\nCache folder: ${cacheDir.absolutePath}" )
-                    .setNeutralButton("Clear Cache"){dialog, _ ->
+                    .setMessage("Cache Size $formattedCacheSize\nCache folder: ${cacheDir.absolutePath}")
+                    .setNeutralButton("Clear Cache") { dialog, _ ->
                         val deleted = cacheDir.deleteRecursively()
                         if (deleted) {
-                            Toast.makeText(this, "Cache cleared successfully", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                this,
+                                "Cache cleared successfully",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         } else {
-                            Toast.makeText(this, "Failed to clear cache", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, "Failed to clear cache", Toast.LENGTH_SHORT)
+                                .show()
                         }
                     }
                     .setNegativeButton("Cancel") { dialog, _ ->
@@ -193,11 +244,13 @@ class MainActivity : AppCompatActivity() {
                 /*
                 val intent = Intent(this, SettingsActivity::class.java)
                 startActivity(intent)*/
-                true}
-            else -> super.onOptionsItemSelected(item)
+                true
+            }
 
+            else -> super.onOptionsItemSelected(item)
         }
     }
+
     override fun onSupportNavigateUp(): Boolean {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         return navController.navigateUp(appBarConfiguration)

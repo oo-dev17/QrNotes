@@ -250,7 +250,16 @@ class SecondFragment : Fragment() {
                             .setNeutralButton("Make gallery picture") { dialog, _ ->
                                 val noteId = qrNote!!.documentId!!
                                 val newGalleryPicName = imageItem.file.name
-                                Firebase.firestore.collection("qrNotes").document(noteId)
+                                val notesCollection = FirestoreManager.getUserNotesCollection()
+                                if (notesCollection == null) {
+                                    Toast.makeText(
+                                        requireContext(),
+                                        "User not logged in? Notes empty",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    return@setNeutralButton
+                                }
+                                notesCollection.document(noteId)
                                     .update("galleryPic", newGalleryPicName)
                                     .addOnSuccessListener {
                                         // --- THIS IS THE TRIGGER ---
@@ -731,12 +740,29 @@ class SecondFragment : Fragment() {
         } else {
             val qrCode = result.contents // Get the scanned QR code data
             Toast.makeText(requireContext(), "Scanned: $qrCode", Toast.LENGTH_SHORT).show()
-            Firebase.firestore.collection("qrNotes").whereEqualTo("qrCode", qrCode)
+            val notesCollection = FirestoreManager.getUserNotesCollection()
+            if (notesCollection == null) {
+                Toast.makeText(
+                    requireContext(),
+                    "User not logged in? Notes empty",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@registerForActivityResult
+            }
+            notesCollection.whereEqualTo("qrCode", qrCode)
                 .get()
                 .addOnSuccessListener { documents ->
                     if (documents.isEmpty) {
 
-                        Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
+                        if (notesCollection == null) {
+                            Toast.makeText(
+                                requireContext(),
+                                "User not logged in? Notes empty",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            return@addOnSuccessListener
+                        }
+                        notesCollection.document(qrNote!!.documentId!!)
                             .update(qrNote!!::qrCode.name, qrCode)
                     } else {
                         Toast.makeText(
@@ -780,8 +806,16 @@ class SecondFragment : Fragment() {
             builder.setPositiveButton("Change") { dialog, _ ->
                 val title = input.text.toString()
                 if (title.isNotEmpty()) {
-
-                    Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
+                    val notesCollection = FirestoreManager.getUserNotesCollection()
+                    if (notesCollection == null) {
+                        Toast.makeText(
+                            requireContext(),
+                            "User not logged in? Notes empty",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@setPositiveButton
+                    }
+                    notesCollection.document(qrNote!!.documentId!!)
                         .update(qrNote!!::title.name, title)
                 } else {
                     Snackbar.make(
@@ -796,8 +830,16 @@ class SecondFragment : Fragment() {
             }
             builder.show()
         }
-
-        val docRef = Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
+        val notesCollection = FirestoreManager.getUserNotesCollection()
+        if (notesCollection == null) {
+            Toast.makeText(
+                requireContext(),
+                "User not logged in? Notes empty",
+                Toast.LENGTH_SHORT
+                ).show()
+            return
+        }
+        val docRef = notesCollection.document(qrNote!!.documentId!!)
         firestoreListener = docRef.addSnapshotListener { snapshot, error ->
             if (error != null) {
                 Log.e("FirestoreListener", "Listen failed.", error)
@@ -858,7 +900,16 @@ class SecondFragment : Fragment() {
     }
 
     private fun saveText() {
-        Firebase.firestore.collection("qrNotes").document(qrNote!!.documentId!!)
+        val notesCollection = FirestoreManager.getUserNotesCollection()
+        if (notesCollection == null) {
+            Toast.makeText(
+                requireContext(),
+                "User not logged in? Notes empty",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        notesCollection.document(qrNote!!.documentId!!)
             .update(qrNote!!::content.name, _binding!!.edittextSecond.text.toString())
     }
 

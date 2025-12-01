@@ -70,19 +70,30 @@ class SelectNoteActivity : AppCompatActivity() {
         binding.recyclerViewNoteSelection.layoutManager = LinearLayoutManager(this)
     }
 
+
+
+    // In SelectNoteActivity.kt
     private fun loadNotes() {
         lifecycleScope.launch {
             try {
-                val snapshot = Firebase.firestore.collection("qrNotes").get().await()
+                // Use the singleton to get the collection reference
+                val notesCollection = FirestoreManager.getUserNotesCollection()
+
+                if (notesCollection == null) {
+                    Toast.makeText(
+                        this@SelectNoteActivity,
+                        "User not logged in.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    itemAdapter.updateList(emptyList()) // Clear the list
+                    return@launch
+                }
+
+                val snapshot = notesCollection.get().await()
 
                 val notes = snapshot.documents.map { document ->
-                    // 2. Convert the document's data to a QrNote object.
-                    //    At this point, its documentId property is still null.
                     val note = document.toObject(QrNote::class.java)
-
-                    // 3. Manually get the document's ID and set it on the object.
                     note?.documentId = document.id
-
                     note
                 }.filterNotNull()
 
@@ -96,7 +107,6 @@ class SelectNoteActivity : AppCompatActivity() {
             }
         }
     }
-
     private fun processSharedFile(targetNote: QrNote) {
         Toast.makeText(this, "Adding file to '${targetNote.title}'...", Toast.LENGTH_LONG).show()
 

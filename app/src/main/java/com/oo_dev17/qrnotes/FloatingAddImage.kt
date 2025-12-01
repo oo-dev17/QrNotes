@@ -18,7 +18,12 @@ class FloatingAddImage(context: Context) : Dialog(context),  ItemSelectListener{
         // Set up RecyclerView
         val recyclerView = findViewById<RecyclerView>(R.id.recycler_view_noteString)
         recyclerView.layoutManager = LinearLayoutManager(context)
-        Firebase.firestore.collection("qrNotes").get().addOnSuccessListener { result ->
+        val notesCollection = FirestoreManager.getUserNotesCollection()
+        if (notesCollection == null) {
+            recyclerView.adapter = NotesStringAdapter(emptyList(), this)
+            return
+        }
+        notesCollection.get().addOnSuccessListener { result ->
 
         recyclerView.adapter = NotesStringAdapter(result.map { it.toObject(QrNote::class.java) }.toMutableList(),  this)}
 

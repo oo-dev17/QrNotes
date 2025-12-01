@@ -21,8 +21,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.firebase.Firebase
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.firestore
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.auth
 import com.google.firebase.storage.storage
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -35,12 +35,17 @@ import java.text.SimpleDateFormat
  */
 class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
 
+    private lateinit var auth: FirebaseAuth
+    private var authStateListener: FirebaseAuth.AuthStateListener? = null
+
     private lateinit var itemAdapter: ItemAdapter
     private lateinit var qrNotes: MutableList<QrNote>
     private var _binding: FragmentFirstBinding? = null
     private lateinit var coroutineScope: CoroutineScope
 
     private val sharedViewModel: SharedViewModel by activityViewModels()
+
+    private var notesCollection = FirestoreManager.getUserNotesCollection()
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -52,6 +57,15 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
     ): View {
         _binding = FragmentFirstBinding.inflate(inflater, container, false)
         checkStoragePermission()
+
+        if (notesCollection == null) {
+            Toast.makeText(requireContext(), "Login required to access notes.", Toast.LENGTH_LONG)
+                .show()
+            // Optionally, you could disable UI elements here if you don't navigate away.
+            binding.fabNew.isEnabled = false
+            binding.fabScanQr.isEnabled = false
+        }
+
         binding.fabNew.setOnClickListener { _ ->
             showTitleInputDialog()
         }
@@ -61,12 +75,48 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         return binding.root
     }
 
-    private fun showTitleInputDialog(newQrCode :String? = null) {
+    override fun onStart() {
+        super.onStart()
+        // Start listening when the fragment becomes visible
+        authStateListener?.let { auth.addAuthStateListener(it) }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Stop listening when the fragment is no longer visible to prevent memory leaks
+        authStateListener?.let { auth.removeAuthStateListener(it) }
+    }
+
+    private fun refreshDataForCurrentUser() {
+        // Step 1: Re-evaluate the user's login status to get the correct collection reference.
+        notesCollection = FirestoreManager.getUserNotesCollection()
+
+        // Step 2: Check if the user is now logged in.
+        if (notesCollection != null) {
+            // User is logged in, enable UI and fetch their notes from Firestore.
+            binding.fabNew.isEnabled = true
+            binding.fabScanQr.isEnabled = true
+            binding.searchText.isEnabled = true
+            getAllQrNotes() // This will now use the correct user-specific collection
+        } else {
+            // User is not logged in (or logged out), show a guest state.
+            // You could show a "login to see notes" message or load local-only notes.
+            Toast.makeText(requireContext(), "Please log in to see your notes.", Toast.LENGTH_SHORT)
+                .show()
+            itemAdapter.updateList(emptyList()) // Clear the list
+            binding.fabNew.isEnabled = false
+            binding.fabScanQr.isEnabled = false
+            binding.searchText.isEnabled = false
+        }
+    }
+
+    private fun showTitleInputDialog(newQrCode: String? = null) {
         // Create an AlertDialog.Builder using the Activity context
-        val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
+        val builder =
+            androidx.appcompat.app.AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
         builder.setTitle("Create New Note")
         builder.setMessage("Enter a title for the note")
-        val sharedDb = Firebase.firestore
+
         // Set up the input field
         val input = EditText(requireContext())
         input.hint = "Title"
@@ -80,9 +130,9 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                 val note = QrNote(title, "", qrCode = newQrCode ?: "") // Empty content for now
 
                 try {
-                    sharedDb.collection("qrNotes").add(note).addOnSuccessListener { docRef ->
+                    notesCollection?.add(note)?.addOnSuccessListener { docRef ->
                         Log.d("FirestoreAccess", "Note added with ID: ${docRef.id}")
-                        sharedDb.collection("qrNotes").document(docRef.id).update("id", docRef.id)
+                        notesCollection!!.document(docRef.id).update("id", docRef.id)
                         note.documentId = docRef.id
                         onNewQrNote(note)
                         // Jump to second fragment
@@ -94,7 +144,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                         val navController = findNavController()
                         navController.navigate(R.id.action_FirstFragment_to_SecondFragment, bundle)
 
-                    }.addOnFailureListener { e ->
+                    }?.addOnFailureListener { e ->
                         Log.w("Firestore", "Error adding note", e)
                     }
                 } catch (e: Exception) {
@@ -163,7 +213,8 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                         "QR code not found: $scannedData",
                         Toast.LENGTH_SHORT
                     ).show()
-                    val builder = android.app.AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
+                    val builder =
+                        android.app.AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
                     builder.setTitle("QrNote Image Menu")
                         .setMessage("QR code $scannedData not found, do you want to create a new note?")
                         .setPositiveButton("YES") { dialog, _ ->
@@ -195,46 +246,36 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         super.onActivityResult(requestCode, resultCode, data)
     }
 
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // Define what happens when the user's login state changes
+        authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+            val user = firebaseAuth.currentUser
+            if (user != null) {
+                // User is signed IN. Fetch their data.
+                Log.d("AUTH_STATE", "User logged in: ${user.uid}")
+                refreshDataForCurrentUser()
+            } else {
+                // User is signed OUT. Clear the data.
+                Log.d("AUTH_STATE", "User logged out.")
+                refreshDataForCurrentUser() // This will handle the logged-out state
+            }
+        }
 
         val recyclerView = binding.myRecyclerView // Assuming you have a RecyclerView in your layout
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         coroutineScope = viewLifecycleOwner.lifecycleScope
+        val storageReference = Firebase.storage.reference
+        val cachedFileHandler = CachedFileHandler(storageReference, requireContext())
+        qrNotes = mutableListOf()
 
-        getAllQrNotes { notes ->
-            qrNotes = notes.toMutableList()
-            val storageReference = Firebase.storage.reference
-            val cachedFileHandler = CachedFileHandler(storageReference, requireContext())
-            notes.forEach { qrNote ->
-                Log.d(
-                    "FirestoreAccess",
-                    "QrNote found: Title:${qrNote.title},Content:${qrNote.content} QrCode:${qrNote.qrCode} DocId:'${qrNote.documentId}'"
-                )
-            }
-            itemAdapter = ItemAdapter(qrNotes, this, coroutineScope, cachedFileHandler)
+        itemAdapter = ItemAdapter(qrNotes, this, coroutineScope, cachedFileHandler)
 
-            binding.myRecyclerView.adapter = itemAdapter
-            binding.myRecyclerView.layoutManager = LinearLayoutManager(requireContext())
-            recyclerView.adapter = itemAdapter
+        binding.myRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+        binding.myRecyclerView.adapter = itemAdapter
 
-            sharedViewModel.noteToRefresh.observe(viewLifecycleOwner) { refreshInfo ->
-                // Check if there's a valid refresh request.
-                refreshInfo?.let { (noteId, newGalleryPicName) ->
-                    // 1. Find the index of the note in your adapter's list.
-                    val index = itemAdapter.allQrNotes.indexOfFirst { it.documentId == noteId }
-
-                    if (index != -1) {
-                        // Notify the adapter to redraw just this one item
-                        itemAdapter.notifyItemChanged(index)
-                    }
-                    // 4. Reset the LiveData to prevent re-triggering.
-                    sharedViewModel.onThumbnailRefreshHandled()
-                }
-            }
-
-        }
+        // 3. Setup listeners that depend on the adapter
 
         binding.searchText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -261,35 +302,36 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                     qrNote.content?.contains(query, ignoreCase = true) == true ||
                     qrNote.qrCode.contains(query, ignoreCase = true) ||
                     qrNote.documentId?.contains(
-                query,
-                ignoreCase = true
-            ) == true //|| qrNote.allDocuments.any({ it.contains(query, ignoreCase = true) })
+                        query,
+                        ignoreCase = true
+                    ) == true //|| qrNote.allDocuments.any({ it.contains(query, ignoreCase = true) })
         }.toMutableList()
     }
 
-    private fun getAllQrNotes(callback: (List<QrNote>) -> Unit) {
+    private fun getAllQrNotes() {
 
-        val db = FirebaseFirestore.getInstance()
-        db.collection("qrNotes")
-            .get()
-            .addOnSuccessListener { result ->
-                Log.w("FirestoreAccess", "Successful getting QrNotes")
-                try {
-                    val notes = result.map { qrNote ->
-                        val qr = qrNote.toObject(QrNote::class.java)
-                        qr.copy(documentId = qrNote.id)
+        notesCollection?.get()?.addOnSuccessListener { result ->
+            Log.w("FirestoreAccess", "Successful getting QrNotes")
+            try {
+                val notes = result.map { documentSnapshot ->
+                    val qrNote = documentSnapshot.toObject(QrNote::class.java)
+                    qrNote.copy()
+                    if (qrNote.documentId == null) {
+                        qrNote.documentId = documentSnapshot.id
                     }
-                    callback(notes)
-                } catch (e: Exception) {
-                    Log.e(
-                        "Firestore",
-                        "Error converting Firestore documents to QrNote objects",
-                        e
-                    )
+                    qrNote
                 }
-
+                itemAdapter.updateList(notes)
+            } catch (e: Exception) {
+                Log.e(
+                    "Firestore",
+                    "Error converting Firestore documents to QrNote objects",
+                    e
+                )
             }
-            .addOnFailureListener { exception ->
+
+        }
+            ?.addOnFailureListener { exception ->
                 Log.w("Firestore", "Error getting QrNotes", exception)
             }
     }
@@ -311,7 +353,8 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             "Doc.Id:${qrNote.documentId}\n GalleryPic:${qrNote.galleryPic}\n Created:${dateString}\nPictures: ${qrNote.pictureCount}\n  from cache: ${qrNote.picsLoadedFromCache}\n  from firestore: ${qrNote.picsLoadedFromFirestore}\n" +
                     "Documents: ${qrNote.documentsCount}\n from cache ${qrNote.docsLoadedFromCache}\n from firestore ${qrNote.docsLoadedFromFirestore}"
 
-        val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext(),R.style.AlertDialogTheme)
+        val builder =
+            androidx.appcompat.app.AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
         builder.setTitle("QrNote Options (FirstFragment)")
             .setMessage("$info\n\n\nWhat do you want to do with this QrNote?")
             .setPositiveButton("Delete") { dialog, _ ->
@@ -327,28 +370,22 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             }
             .show()
     }
-    /*
-        private fun showQrNoteInfo(qrNote: QrNote) {
-
-            val info =
-                "Pictures: ${qrNote.pictureCount}\nLoaded from cache: ${qrNote.picsLoadedFromCache}\nLoaded from cloud: ${qrNote.picsLoadedFromFirestore}\n" +
-                        "Documents: ${qrNote.allDocuments.count()} From cache ${qrNote.docsLoadedFromCache} From firestore ${qrNote.docsLoadedFromFirestore}"
-
-            val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            builder.setTitle("Note Info")
-                .setMessage(info)
-                .setPositiveButton("OK") { dialog, _ ->
-                    dialog.dismiss()
-                }
-                .show()
-        }*/
 
     override fun deleteQrNote(qrNote: QrNote) {
         // TODO Delete files of qrNote
         val position = qrNotes.indexOf(qrNote)
         if (position != -1) {
             qrNotes.removeAt(position)
-            FirebaseFirestore.getInstance().collection("qrNotes").document(qrNote.documentId!!)
+            val notesCollection = FirestoreManager.getUserNotesCollection()
+            if (notesCollection == null) {
+                Toast.makeText(
+                    requireContext(),
+                    "User not logged in? Notes empty",
+                    Toast.LENGTH_SHORT
+                ).show()
+                return
+            }
+            notesCollection.document(qrNote.documentId!!)
                 .delete()
             itemAdapter.notifyItemRemoved(position)
             Toast.makeText(

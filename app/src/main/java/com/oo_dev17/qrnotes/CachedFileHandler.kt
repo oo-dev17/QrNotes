@@ -4,6 +4,7 @@ import ImageAdapter
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import android.widget.Toast
 import androidx.core.net.toUri
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.storage.StorageReference
@@ -15,6 +16,8 @@ import java.io.IOException
 class CachedFileHandler(private val storageRef: StorageReference, val context: Context) {
 
     suspend fun getFileNamesFromCloud(qrNote: QrNote, category: Category): List<String> {
+        if (qrNote?.documentId==null)
+            return emptyList()
         return try {
             val listResult = storageRef
                 .child(qrNote.documentId!!)

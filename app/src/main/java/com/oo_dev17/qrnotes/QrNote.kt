@@ -1,6 +1,7 @@
 package com.oo_dev17.qrnotes
 
 import android.os.Environment
+import androidx.room.PrimaryKey
 import android.os.Parcel
 import android.os.Parcelable
 import android.util.Log

@@ -1,16 +1,14 @@
 package com.oo_dev17.qrnotes
 
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
 import android.os.Bundle
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import android.text.Editable
 import android.text.TextWatcher
-import android.view.View
-import android.view.inputmethod.EditorInfo
+import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
+import androidx.room.Update
 import com.google.firebase.auth.FirebaseAuth
 import com.oo_dev17.qrnotes.databinding.ActivityLoginBinding
 
@@ -18,20 +16,33 @@ class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding
     private lateinit var auth: FirebaseAuth
+    private lateinit var username: EditText
+    private lateinit var password: EditText
+    private lateinit var login: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-auth=FirebaseAuth.getInstance()
+        auth = FirebaseAuth.getInstance()
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val username = binding.username
-        val password = binding.password
-        val login = binding.login
+        username = binding.username
+        password = binding.password
+        login = binding.login
 
         // disable login button unless both username / password is valid
-        login.isEnabled = auth.currentUser != null
+        UpdateButton()
+
+        username.afterTextChanged { _ ->
+            UpdateButton()
+        }
+        password.afterTextChanged { _ ->
+            UpdateButton()
+        }
+
+
+
 
         login.setOnClickListener { _ ->
             auth.signInWithEmailAndPassword(username.text.toString(), password.text.toString())
@@ -112,6 +123,10 @@ auth=FirebaseAuth.getInstance()
 
                 }
         }
+    }
+
+    private fun UpdateButton() {
+        login.isEnabled = username.text.isNotBlank() && password.text.isNotBlank()
     }
 
     private fun showLoginFailed(@StringRes errorString: Int) {
