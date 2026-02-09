@@ -276,29 +276,35 @@ class SecondFragment : Fragment() {
                                     }
                             }
                             .setPositiveButton("Delete") { dialog, _ ->
-                                // Delete the document
-                                // val fileCache = FileCache(requireContext())
-                                // fileCache.deleteFileFromCache(qrNote?.documentId!!, fileName)
-                                try {
-                                    //storageRef.child(qrNote!!.documentId!!).child(fileName).delete()
-                                    // remove file entry from ui
+                                AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
+                                    .setTitle("Delete Image")
+                                    .setMessage("Are you sure you want to delete this image?")
+                                    .setPositiveButton("Yes") { dialog, _ ->
+                                        // Delete the document
+                                        try {
+                                            //storageRef.child(qrNote!!.documentId!!).child(fileName).delete()
+                                            // remove file entry from ui
 
-                                    imageAdapter.imageItems.removeAt(position)
-                                    imageAdapter.notifyItemRemoved(position)
+                                            imageAdapter.imageItems.removeAt(position)
+                                            imageAdapter.notifyItemRemoved(position)
 
-                                    cachedFileHandler.deleteFileFromBoth(
-                                        qrNote!!.documentId!!,
-                                        CachedFileHandler.Category.Images,
-                                        imageItem.file.name
-                                    )
-                                    dialog.dismiss()
-                                } catch (e: Exception) {
-                                    Snackbar.make(
-                                        requireView(),
-                                        "Delete fail: " + e.message,
-                                        Snackbar.LENGTH_LONG
-                                    ).show()
-                                }
+                                            cachedFileHandler.deleteFileFromBoth(
+                                                qrNote!!.documentId!!,
+                                                CachedFileHandler.Category.Images,
+                                                imageItem.file.name
+                                            )
+                                            dialog.dismiss()
+                                        } catch (e: Exception) {
+                                            Snackbar.make(
+                                                requireView(),
+                                                "Delete fail: " + e.message,
+                                                Snackbar.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    }
+                                    .setNegativeButton("Cancel") { dialog, _ ->
+                                        dialog.dismiss()
+                                    }
                                 dialog.dismiss()
                             }
                             .setNegativeButton("Cancel") { dialog, _ ->
@@ -836,7 +842,7 @@ class SecondFragment : Fragment() {
                 requireContext(),
                 "User not logged in? Notes empty",
                 Toast.LENGTH_SHORT
-                ).show()
+            ).show()
             return
         }
         val docRef = notesCollection.document(qrNote!!.documentId!!)

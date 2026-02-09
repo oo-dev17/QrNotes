@@ -1,6 +1,7 @@
 package com.oo_dev17.qrnotes
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -359,13 +360,20 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         builder.setTitle("QrNote Options (FirstFragment)")
             .setMessage("$info\n\n\nWhat do you want to do with this QrNote?")
             .setPositiveButton("Delete") { dialog, _ ->
-                deleteQrNote(qrNote)
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Delete QrNote")
+                    .setMessage("Are you sure you want to delete this QrNote?")
+                    .setPositiveButton("Yes") { dialog, _ ->
+                        deleteQrNote(qrNote)
+                        dialog.dismiss()
+                    }
+                    .setNegativeButton("No") { dialog, _ ->
+                        dialog.dismiss()
+                    }
+                    .show()
                 dialog.dismiss()
             }
-            /*            .setNeutralButton("Info") { dialog, _ ->
-                            showQrNoteInfo(qrNote)
-                            dialog.dismiss()
-                        }*/
+
             .setNegativeButton("Cancel") { dialog, _ ->
                 dialog.dismiss()
             }
