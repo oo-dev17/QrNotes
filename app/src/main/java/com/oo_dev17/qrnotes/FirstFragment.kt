@@ -322,8 +322,24 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                         qrNote.documentId = documentSnapshot.id
                     }
                     qrNote
-                }
+                }.toMutableList()
+
+                // Keep the fragment's master list in sync with fetched notes so other
+                // code (like the scanner) can find notes.
+                qrNotes.clear()
+                qrNotes.addAll(notes)
+
+                // Update adapter and ensure its searchable list references the same data
                 itemAdapter.updateList(notes)
+                try {
+                    // Some adapter implementations expose a mutable allQrNotes field.
+                    // Keep it in sync if available.
+                    itemAdapter.allQrNotes = qrNotes
+                } catch (e: Exception) {
+                    // ignore if adapter doesn't expose that field
+                }
+                itemAdapter.notifyDataSetChanged()
+
             } catch (e: Exception) {
                 Log.e(
                     "Firestore",
