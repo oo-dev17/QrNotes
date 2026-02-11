@@ -53,8 +53,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
     private val binding get() = _binding!!
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
         auth = Firebase.auth
         _binding = FragmentFirstBinding.inflate(inflater, container, false)
@@ -101,6 +100,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             binding.searchText.isEnabled = true
             getAllQrNotes() // This will now use the correct user-specific collection
         } else {
+
             // User is not logged in (or logged out), show a guest state.
             // You could show a "login to see notes" message or load local-only notes.
             Toast.makeText(requireContext(), "Please log in to see your notes.", Toast.LENGTH_SHORT)
@@ -134,8 +134,6 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                 try {
                     notesCollection?.add(note)?.addOnSuccessListener { docRef ->
                         Log.d("FirestoreAccess", "Note added with ID: ${docRef.id}")
-                        notesCollection!!.document(docRef.id).update("id", docRef.id)
-                        note.documentId = docRef.id
                         onNewQrNote(note)
                         // Jump to second fragment
                         val bundle = Bundle()
@@ -191,9 +189,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         val options = ScanOptions().apply {
             setDesiredBarcodeFormats(
                 listOf(
-                    ScanOptions.EAN_13,
-                    ScanOptions.EAN_8,
-                    ScanOptions.QR_CODE
+                    ScanOptions.EAN_13, ScanOptions.EAN_8, ScanOptions.QR_CODE
                 )
             ) // Specify QR code format
             setPrompt("Scan a QR code") // Set a prompt
@@ -211,9 +207,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                 val note = qrNotes.firstOrNull() { note -> note.qrCode == scannedData }
                 if (note == null) {
                     Toast.makeText(
-                        requireContext(),
-                        "QR code not found: $scannedData",
-                        Toast.LENGTH_SHORT
+                        requireContext(), "QR code not found: $scannedData", Toast.LENGTH_SHORT
                     ).show()
                     val builder =
                         android.app.AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
@@ -222,11 +216,9 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                         .setPositiveButton("YES") { dialog, _ ->
                             dialog.dismiss()
                             showTitleInputDialog(scannedData)
-                        }
-                        .setNegativeButton("NO") { dialog, _ ->
+                        }.setNegativeButton("NO") { dialog, _ ->
                             dialog.dismiss()
-                        }
-                        .show()
+                        }.show()
                     return@registerForActivityResult
                 }
                 val bundle = Bundle()
@@ -234,9 +226,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                 findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment, bundle)
             } catch (e: Exception) {
                 Toast.makeText(
-                    requireContext(),
-                    "QR code not found: ${e.message}",
-                    Toast.LENGTH_SHORT
+                    requireContext(), "QR code not found: ${e.message}", Toast.LENGTH_SHORT
                 ).show()
             }
         }
@@ -300,13 +290,15 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
     private fun filterQrNotes(query: String): MutableList<QrNote> {
 
         return qrNotes.filter { qrNote ->
-            qrNote.title?.contains(query, ignoreCase = true) == true ||
-                    qrNote.content?.contains(query, ignoreCase = true) == true ||
-                    qrNote.qrCode.contains(query, ignoreCase = true) ||
-                    qrNote.documentId?.contains(
-                        query,
-                        ignoreCase = true
-                    ) == true //|| qrNote.allDocuments.any({ it.contains(query, ignoreCase = true) })
+            qrNote.title?.contains(query, ignoreCase = true) == true || qrNote.content?.contains(
+                query,
+                ignoreCase = true
+            ) == true || qrNote.qrCode.contains(
+                query,
+                ignoreCase = true
+            ) || qrNote.documentId?.contains(
+                query, ignoreCase = true
+            ) == true //|| qrNote.allDocuments.any({ it.contains(query, ignoreCase = true) })
         }.toMutableList()
     }
 
@@ -319,7 +311,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                     val qrNote = documentSnapshot.toObject(QrNote::class.java)
                     qrNote.copy()
                     if (qrNote.documentId == null) {
-                        qrNote.documentId = documentSnapshot.id
+                        if (false)  qrNote.documentId = documentSnapshot.id
                     }
                     qrNote
                 }.toMutableList()
@@ -339,19 +331,15 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                     // ignore if adapter doesn't expose that field
                 }
                 itemAdapter.notifyDataSetChanged()
-
             } catch (e: Exception) {
                 Log.e(
-                    "Firestore",
-                    "Error converting Firestore documents to QrNote objects",
-                    e
+                    "Firestore", "Error converting Firestore documents to QrNote objects", e
                 )
             }
 
+        }?.addOnFailureListener { exception ->
+            Log.w("Firestore", "Error getting QrNotes", exception)
         }
-            ?.addOnFailureListener { exception ->
-                Log.w("Firestore", "Error getting QrNotes", exception)
-            }
     }
 
     override fun onDestroyView() {
@@ -368,32 +356,27 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         val simpleDateFormat = SimpleDateFormat("dd.MM.yyyy - HH:mm:ss")
         val dateString = simpleDateFormat.format(qrNote.creationDate)
         val info =
-            "Doc.Id:${qrNote.documentId}\n GalleryPic:${qrNote.galleryPic}\n Created:${dateString}\nPictures: ${qrNote.pictureCount}\n  from cache: ${qrNote.picsLoadedFromCache}\n  from firestore: ${qrNote.picsLoadedFromFirestore}\n" +
-                    "Documents: ${qrNote.documentsCount}\n from cache ${qrNote.docsLoadedFromCache}\n from firestore ${qrNote.docsLoadedFromFirestore}"
+            "Doc.Id:${qrNote.documentId}\n GalleryPic:${qrNote.galleryPic}\n Created:${dateString}\nPictures: ${qrNote.pictureCount}\n  from cache: ${qrNote.picsLoadedFromCache}\n  from firestore: ${qrNote.picsLoadedFromFirestore}\n" + "Documents: ${qrNote.documentsCount}\n from cache ${qrNote.docsLoadedFromCache}\n from firestore ${qrNote.docsLoadedFromFirestore}"
 
         val builder =
             androidx.appcompat.app.AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
         builder.setTitle("QrNote Options (FirstFragment)")
             .setMessage("$info\n\n\nWhat do you want to do with this QrNote?")
             .setPositiveButton("Delete") { dialog, _ ->
-                AlertDialog.Builder(requireContext())
-                    .setTitle("Delete QrNote")
+                AlertDialog.Builder(requireContext()).setTitle("Delete QrNote")
                     .setMessage("Are you sure you want to delete this QrNote?")
                     .setPositiveButton("Yes") { dialog, _ ->
                         deleteQrNote(qrNote)
                         dialog.dismiss()
-                    }
-                    .setNegativeButton("No") { dialog, _ ->
+                    }.setNegativeButton("No") { dialog, _ ->
                         dialog.dismiss()
-                    }
-                    .show()
+                    }.show()
                 dialog.dismiss()
             }
 
             .setNegativeButton("Cancel") { dialog, _ ->
                 dialog.dismiss()
-            }
-            .show()
+            }.show()
     }
 
     override fun deleteQrNote(qrNote: QrNote) {
@@ -404,21 +387,15 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             val notesCollection = FirestoreManager.getUserNotesCollection()
             if (notesCollection == null) {
                 Toast.makeText(
-                    requireContext(),
-                    "User not logged in? Notes empty",
-                    Toast.LENGTH_SHORT
+                    requireContext(), "User not logged in? Notes empty", Toast.LENGTH_SHORT
                 ).show()
                 return
             }
-            notesCollection.document(qrNote.documentId!!)
-                .delete()
+            notesCollection.document(qrNote.documentId!!).delete()
             itemAdapter.notifyItemRemoved(position)
             Toast.makeText(
-                requireContext(),
-                "QrNote ${qrNote.title} deleted",
-                Toast.LENGTH_SHORT
-            )
-                .show()
+                requireContext(), "QrNote ${qrNote.title} deleted", Toast.LENGTH_SHORT
+            ).show()
         }
     }
 

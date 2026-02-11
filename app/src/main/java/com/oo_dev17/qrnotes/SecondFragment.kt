@@ -6,28 +6,33 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
-
 import android.text.Editable
 import android.text.util.Linkify
 import android.util.Log
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.MimeTypeMap
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.view.ViewCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
@@ -36,7 +41,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.firestore
 import com.google.firebase.storage.storage
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
@@ -77,8 +81,7 @@ class SecondFragment : Fragment() {
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
 
         _binding = FragmentSecondBinding.inflate(inflater, container, false)
@@ -111,7 +114,7 @@ class SecondFragment : Fragment() {
             }
         }
 
-        // OPEN DOCuments
+        // OPEN documents
         binding.fabAddDoc.setOnClickListener { _ ->
             OpenFile(this).selectDocToAdd(Uri.EMPTY, true)
         }
@@ -198,8 +201,7 @@ class SecondFragment : Fragment() {
 
             imageAdapter = ImageAdapter(imageItems) // Handles the images
             buttonAdapter = ButtonAdapter()
-            val concatAdapter =
-                ConcatAdapter(imageAdapter, buttonAdapter)
+            val concatAdapter = ConcatAdapter(imageAdapter, buttonAdapter)
             // Set up the RecyclerView with a horizontal LinearLayoutManager
             binding.recyclerViewImages.layoutManager =
                 LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
@@ -227,9 +229,7 @@ class SecondFragment : Fragment() {
                             // Check storage permission and open the gallery
                             _binding!!.recyclerViewImages.post {
                                 Snackbar.make(
-                                    requireView(),
-                                    "Book details loaded!",
-                                    Snackbar.LENGTH_SHORT
+                                    requireView(), "Book details loaded!", Snackbar.LENGTH_SHORT
                                 ).show()
                             }
                             checkStoragePermission(true)
@@ -248,7 +248,7 @@ class SecondFragment : Fragment() {
                         builder.setTitle("QrNote Image Menu")
                             .setMessage("What do you want to do with img ${imageItem.file.name} ?")
                             .setNeutralButton("Make gallery picture") { dialog, _ ->
-                                val noteId = qrNote!!.documentId!!
+                                val qrNoteDocumentId = qrNote!!.documentId!!
                                 val newGalleryPicName = imageItem.file.name
                                 val notesCollection = FirestoreManager.getUserNotesCollection()
                                 if (notesCollection == null) {
@@ -259,13 +259,11 @@ class SecondFragment : Fragment() {
                                     ).show()
                                     return@setNeutralButton
                                 }
-                                notesCollection.document(noteId)
-                                    .update("galleryPic", newGalleryPicName)
-                                    .addOnSuccessListener {
+                                notesCollection.document(qrNoteDocumentId)
+                                    .update("galleryPic", newGalleryPicName).addOnSuccessListener {
                                         // --- THIS IS THE TRIGGER ---
                                         sharedViewModel.requestThumbnailRefresh(
-                                            noteId,
-                                            newGalleryPicName
+                                            qrNoteDocumentId, newGalleryPicName
                                         )
                                         Toast.makeText(
                                             requireContext(),
@@ -274,8 +272,7 @@ class SecondFragment : Fragment() {
                                         ).show()
                                         dialog.dismiss()
                                     }
-                            }
-                            .setPositiveButton("Delete") { dialog, _ ->
+                            }.setPositiveButton("Delete") { dialog, _ ->
                                 AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
                                     .setTitle("Delete Image")
                                     .setMessage("Are you sure you want to delete this image?")
@@ -301,16 +298,13 @@ class SecondFragment : Fragment() {
                                                 Snackbar.LENGTH_LONG
                                             ).show()
                                         }
-                                    }
-                                    .setNegativeButton("Cancel") { dialog, _ ->
+                                    }.setNegativeButton("Cancel") { dialog, _ ->
                                         dialog.dismiss()
                                     }
                                 dialog.dismiss()
-                            }
-                            .setNegativeButton("Cancel") { dialog, _ ->
+                            }.setNegativeButton("Cancel") { dialog, _ ->
                                 dialog.dismiss()
-                            }
-                            .show()
+                            }.show()
                     }
 
                     is ImageItem.ResourceImage -> {
@@ -321,22 +315,20 @@ class SecondFragment : Fragment() {
     }
 
     private fun assertQrNoteIsInStorageRef() {
-        storageRef.listAll()
-            .addOnSuccessListener { listResult ->
-                val childExists = listResult.prefixes.any { it.name == qrNote!!.documentId }
+        storageRef.listAll().addOnSuccessListener { listResult ->
+            val childExists = listResult.prefixes.any { it.name == qrNote!!.documentId }
 
-                if (!childExists) {
-                    // Child doesn't exist, add it (example: create an empty folder)
-                    storageRef.child("${qrNote!!.documentId}/.emptyfile").putBytes(ByteArray(0))
-                } else {
-                    // Child exists
-                    println("Child 'yourChildName' exists.")
-                }
+            if (!childExists) {
+                // Child doesn't exist, add it (example: create an empty folder)
+                storageRef.child("${qrNote!!.documentId}/.emptyfile").putBytes(ByteArray(0))
+            } else {
+                // Child exists
+                println("Child 'yourChildName' exists.")
             }
-            .addOnFailureListener { exception ->
-                // Handle errors (e.g., network issues, permissions)
-                println("Error checking child: ${exception.message}")
-            }
+        }.addOnFailureListener { exception ->
+            // Handle errors (e.g., network issues, permissions)
+            println("Error checking child: ${exception.message}")
+        }
     }
 
     private fun setupFilesRecycler() {
@@ -348,11 +340,9 @@ class SecondFragment : Fragment() {
 
         lifecycleScope.launch {  // Using Fragment's lifecycleScope
             try {
-                val listResult =
-                    cachedFileHandler.getFileNamesFromCloud(
-                        qrNote!!,
-                        CachedFileHandler.Category.Documents
-                    )
+                val listResult = cachedFileHandler.getFileNamesFromCloud(
+                    qrNote!!.documentId!!, CachedFileHandler.Category.Documents
+                )
 
                 val stringList = listResult.map { it }.toMutableList()
                 if (stringList.isEmpty()) {
@@ -382,8 +372,7 @@ class SecondFragment : Fragment() {
                     lifecycleScope.launch {
                         val cachedFileHandler = CachedFileHandler(storageRef, requireContext())
                         val (file, _) = cachedFileHandler.getFileFromCacheOrCloud(
-                            qrNote!!.documentId!!,
-                            CachedFileHandler.Category.Documents, fileName
+                            qrNote!!.documentId!!, CachedFileHandler.Category.Documents, fileName
                         )
                         if (file == null) {
                             Toast.makeText(
@@ -408,9 +397,7 @@ class SecondFragment : Fragment() {
                             // Delete the document
                             val cachedFileHandler = CachedFileHandler(storageRef, requireContext())
                             cachedFileHandler.deleteFileFromBoth(
-                                qrNote?.documentId!!,
-                                CachedFileHandler.Category.Documents,
-                                fileName
+                                qrNote?.documentId!!, CachedFileHandler.Category.Documents, fileName
                             )
                             try {
                                 storageRef.child(qrNote!!.documentId!!)
@@ -422,17 +409,13 @@ class SecondFragment : Fragment() {
                                 dialog.dismiss()
                             } catch (e: Exception) {
                                 Snackbar.make(
-                                    requireView(),
-                                    "Delete fail: " + e.message,
-                                    Snackbar.LENGTH_LONG
+                                    requireView(), "Delete fail: " + e.message, Snackbar.LENGTH_LONG
                                 ).show()
                             }
                             dialog.dismiss()
-                        }
-                        .setNegativeButton("Cancel") { dialog, _ ->
+                        }.setNegativeButton("Cancel") { dialog, _ ->
                             dialog.dismiss()
-                        }
-                        .show()
+                        }.show()
                 }
             } catch (e: Exception) {
                 Log.e("SecondFragment", "Error setting up files recycler: ", e)
@@ -448,9 +431,7 @@ class SecondFragment : Fragment() {
         if (subfolderDir == null) {
             _binding!!.recyclerViewImages.post {
                 Snackbar.make(
-                    requireView(),
-                    "subfolderDir == null!",
-                    Snackbar.LENGTH_SHORT
+                    requireView(), "subfolderDir == null!", Snackbar.LENGTH_SHORT
                 ).show()
             }
             return File("")
@@ -484,12 +465,10 @@ class SecondFragment : Fragment() {
             ActivityCompat.requestPermissions(
                 requireActivity(), arrayOf(permission), REQUEST_CODE_WRITE_EXTERNAL_STORAGE
             )
-            if (openGallery)
-                selectImageFromGallery()
+            if (openGallery) selectImageFromGallery()
         } else {
             // Permission already granted, open the gallery
-            if (openGallery)
-                selectImageFromGallery()
+            if (openGallery) selectImageFromGallery()
         }
     }
 
@@ -497,8 +476,7 @@ class SecondFragment : Fragment() {
 
     private fun checkCameraPermission() {
         if (ContextCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.CAMERA
+                requireContext(), Manifest.permission.CAMERA
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             // Request the permission
@@ -562,9 +540,7 @@ class SecondFragment : Fragment() {
         // Continue only if photoFile was created successfully
         photoFile?.let { file ->
             val photoURI: Uri = FileProvider.getUriForFile(
-                requireContext(),
-                "${requireContext().packageName}.fileprovider",
-                file
+                requireContext(), "${requireContext().packageName}.fileprovider", file
             )
             intent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
 
@@ -594,9 +570,7 @@ class SecondFragment : Fragment() {
 
                 // 2. Upload the file (which now has data) to Firebase
                 cachedFileHandler.uploadToCloud(
-                    qrNote!!,
-                    imageFile,
-                    CachedFileHandler.Category.Images
+                    qrNote!!, imageFile, CachedFileHandler.Category.Images
                 )
                 // The file IS already in cache!
 
@@ -635,17 +609,14 @@ class SecondFragment : Fragment() {
                 val selectedImageUri: Uri? = data?.data
                 if (selectedImageUri != null) {
                     // Load the selected image into an ImageView or process it
-                    var cachedFileHandler = CachedFileHandler(storageRef, context)
+                    val cachedFileHandler = CachedFileHandler(storageRef, context)
                     if (cachedFileHandler.storeSelectedImageInCloudAndCache(
-                            selectedImageUri,
-                            qrNote!!,
-                            imageAdapter
+                            selectedImageUri, qrNote!!, imageAdapter
                         )
-                    )
-                        Snackbar.make(requireView(), "Image loaded!", Snackbar.LENGTH_SHORT).show()
-                    else
-                        Snackbar.make(requireView(), "Image failed to load!", Snackbar.LENGTH_SHORT)
-                            .show()
+                    ) Snackbar.make(requireView(), "Image loaded!", Snackbar.LENGTH_SHORT).show()
+                    else Snackbar.make(
+                        requireView(), "Image failed to load!", Snackbar.LENGTH_SHORT
+                    ).show()
                 }
             }
             if (requestCode == REQUEST_CODE_CAMERA && resultCode == Activity.RESULT_OK) {
@@ -688,16 +659,11 @@ class SecondFragment : Fragment() {
                     }
                     val cachedFileHandler = CachedFileHandler(storageRef, context)
                     val cachedFile = cachedFileHandler.storeFileInCache(
-                        qrNote!!.documentId!!,
-                        CachedFileHandler.Category.Documents,
-                        fileName!!,
-                        uri
+                        qrNote!!.documentId!!, CachedFileHandler.Category.Documents, fileName!!, uri
                     )
                     if (!cachedFile.exists()) {
                         Toast.makeText(
-                            context,
-                            "Failed to save document locally.",
-                            Toast.LENGTH_SHORT
+                            context, "Failed to save document locally.", Toast.LENGTH_SHORT
                         ).show()
                         return // Stop if local save failed
                     }
@@ -708,15 +674,11 @@ class SecondFragment : Fragment() {
 
                     uploadTask.addOnFailureListener { exception ->
                         Toast.makeText(
-                            context,
-                            "Upload failed: " + exception.message,
-                            Toast.LENGTH_SHORT
+                            context, "Upload failed: " + exception.message, Toast.LENGTH_SHORT
                         ).show()
                     }.addOnSuccessListener { taskSnapshot ->
                         Toast.makeText(
-                            context,
-                            "Upload successful of $fileName",
-                            Toast.LENGTH_SHORT
+                            context, "Upload successful of $fileName", Toast.LENGTH_SHORT
                         ).show()
                         val wasEmpty = stringAdapter.itemCount == 0
                         stringAdapter.stringList.add(fileName)
@@ -742,52 +704,110 @@ class SecondFragment : Fragment() {
 
     private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
         if (result.contents == null) {
-            Toast.makeText(requireContext(), "Scan cancelled", Toast.LENGTH_SHORT).show()
+            Snackbar.make(requireView(), "Scan cancelled", Snackbar.LENGTH_SHORT).show()
         } else {
             val qrCode = result.contents // Get the scanned QR code data
-            Toast.makeText(requireContext(), "Scanned: $qrCode", Toast.LENGTH_SHORT).show()
+            Snackbar.make(requireView(), "Scanned: $qrCode", Snackbar.LENGTH_SHORT).show()
             val notesCollection = FirestoreManager.getUserNotesCollection()
             if (notesCollection == null) {
-                Toast.makeText(
-                    requireContext(),
-                    "User not logged in? Notes empty",
-                    Toast.LENGTH_SHORT
+                Snackbar.make(
+                    requireView(), "User not logged in? Notes empty", Snackbar.LENGTH_SHORT
                 ).show()
                 return@registerForActivityResult
             }
-            notesCollection.whereEqualTo("qrCode", qrCode)
-                .get()
+            notesCollection.whereEqualTo(QrNote::qrCode.name, qrCode).get()
                 .addOnSuccessListener { documents ->
-                    if (documents.isEmpty) {
-
-                        if (notesCollection == null) {
-                            Toast.makeText(
-                                requireContext(),
-                                "User not logged in? Notes empty",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            return@addOnSuccessListener
-                        }
-                        notesCollection.document(qrNote!!.documentId!!)
-                            .update(qrNote!!::qrCode.name, qrCode)
+                    val isUsedByOtherNote = documents.any { it.id != qrNote!!.documentId }
+                    if (isUsedByOtherNote) {
+                        val otherDocumentId = documents.first { it.id != qrNote!!.documentId }.id
+                        showTallSnackbar(
+                            requireView(),
+                            "QR code is already in use by note: $otherDocumentId",
+                            Snackbar.LENGTH_LONG
+                        )
                     } else {
-                        Toast.makeText(
-                            requireContext(),
-                            "Scanned: $qrCode ALREADY EXISTS",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        val customId = qrNote!!.documentId!!
+                        notesCollection
+                            .whereEqualTo(
+                                QrNote::documentId.name,
+                                customId
+                            )
+                            .limit(1)
+                            .get().addOnSuccessListener {
+                                showTallSnackbar(
+                                    requireView(),
+                                    "QR code updated successfully.",
+                                    Snackbar.LENGTH_SHORT
+                                )
+                            }.addOnFailureListener { e ->
+                                showTallSnackbar(
+                                    requireView(),
+                                    "Failed to update QR code: ${e.message}",
+                                    Snackbar.LENGTH_LONG
+                                )
+                            }
                     }
+                }.addOnFailureListener { e ->
+                    showTallSnackbar(
+                        requireView(), "Failed to query for QR code: ${e.message}", Snackbar.LENGTH_LONG
+                    )
                 }
         }
+    }
+
+    private fun showTallSnackbar(
+        anchor: View, message: String, duration: Int = Snackbar.LENGTH_LONG
+    ) {
+        val snackbar = Snackbar.make(anchor, message, duration)
+
+        val snackView: View = snackbar.view // <-- DO NOT cast to SnackbarLayout
+
+        val textView =
+            snackView.findViewById<TextView>(com.google.android.material.R.id.snackbar_text)
+
+        // regular-ish text size + multiline
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+        textView.maxLines = 5
+        textView.textAlignment = View.TEXT_ALIGNMENT_CENTER
+
+        // padding + taller
+        val padH = dpToPx(24)
+        val padV = dpToPx(18)
+        textView.setPadding(padH, padV, padH, padV)
+        snackView.minimumHeight = dpToPx(96)
+
+        // center in parent (FrameLayout/CoordinatorLayout)
+        val lp = snackView.layoutParams
+        val newLp = when (lp) {
+            is FrameLayout.LayoutParams -> lp
+            is ViewGroup.MarginLayoutParams -> FrameLayout.LayoutParams(lp)
+            else -> FrameLayout.LayoutParams(lp)
+        }
+        newLp.width = ViewGroup.LayoutParams.WRAP_CONTENT
+        newLp.height = ViewGroup.LayoutParams.WRAP_CONTENT
+        newLp.gravity = Gravity.CENTER
+        snackView.layoutParams = newLp // <-- set via View, not SnackbarBaseLayout
+
+        // optional colors
+        ViewCompat.setBackgroundTintList(
+            snackView,
+            ColorStateList.valueOf(ContextCompat.getColor(anchor.context, android.R.color.black))
+        )
+        textView.setTextColor(ContextCompat.getColor(anchor.context, android.R.color.white))
+
+        snackbar.show()
+    }
+
+    private fun dpToPx(dp: Int): Int {
+        val density = resources.displayMetrics.density
+        return (dp * density).toInt()
     }
 
     private fun launchQRCodeScanner() {
         val options = ScanOptions().apply {
             setDesiredBarcodeFormats(
                 listOf(
-                    ScanOptions.EAN_13,
-                    ScanOptions.EAN_8,
-                    ScanOptions.QR_CODE
+                    ScanOptions.EAN_13, ScanOptions.EAN_8, ScanOptions.QR_CODE
                 )
             ) // Specify QR code format
             setPrompt("Scan a new QR code") // Set a prompt
@@ -815,9 +835,7 @@ class SecondFragment : Fragment() {
                     val notesCollection = FirestoreManager.getUserNotesCollection()
                     if (notesCollection == null) {
                         Toast.makeText(
-                            requireContext(),
-                            "User not logged in? Notes empty",
-                            Toast.LENGTH_SHORT
+                            requireContext(), "User not logged in? Notes empty", Toast.LENGTH_SHORT
                         ).show()
                         return@setPositiveButton
                     }
@@ -839,9 +857,7 @@ class SecondFragment : Fragment() {
         val notesCollection = FirestoreManager.getUserNotesCollection()
         if (notesCollection == null) {
             Toast.makeText(
-                requireContext(),
-                "User not logged in? Notes empty",
-                Toast.LENGTH_SHORT
+                requireContext(), "User not logged in? Notes empty", Toast.LENGTH_SHORT
             ).show()
             return
         }
@@ -856,7 +872,7 @@ class SecondFragment : Fragment() {
                 // --- THIS IS THE MAGIC ---
                 // Firestore has new data. Convert it to your QrNote object.
                 qrNote = snapshot.toObject(QrNote::class.java)
-                qrNote?.documentId = snapshot.id
+                if (false) qrNote?.documentId = snapshot.id
 
                 // Update your entire UI with the fresh data from the SSoT.
                 updateUiWithNewData()
@@ -909,9 +925,7 @@ class SecondFragment : Fragment() {
         val notesCollection = FirestoreManager.getUserNotesCollection()
         if (notesCollection == null) {
             Toast.makeText(
-                requireContext(),
-                "User not logged in? Notes empty",
-                Toast.LENGTH_SHORT
+                requireContext(), "User not logged in? Notes empty", Toast.LENGTH_SHORT
             ).show()
             return
         }

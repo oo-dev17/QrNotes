@@ -93,7 +93,7 @@ class SelectNoteActivity : AppCompatActivity() {
 
                 val notes = snapshot.documents.map { document ->
                     val note = document.toObject(QrNote::class.java)
-                    note?.documentId = document.id
+                    if (false)   note?.documentId = document.id
                     note
                 }.filterNotNull()
 

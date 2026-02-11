@@ -1,12 +1,12 @@
 package com.oo_dev17.qrnotes
 
 import ImageAdapter
+import android.R
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import android.widget.Toast
 import androidx.core.net.toUri
-import com.google.android.material.snackbar.Snackbar
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.storage.StorageReference
 import kotlinx.coroutines.tasks.await
 import java.io.File
@@ -15,51 +15,55 @@ import java.io.IOException
 
 class CachedFileHandler(private val storageRef: StorageReference, val context: Context) {
 
-    suspend fun getFileNamesFromCloud(qrNote: QrNote, category: Category): List<String> {
-        if (qrNote?.documentId==null)
-            return emptyList()
+    suspend fun getFileNamesFromCloud(noteId: String, category: Category): List<String> {
+        if (noteId.isBlank()) return emptyList()
+
         return try {
             val listResult = storageRef
-                .child(qrNote.documentId!!)
+                .child(noteId)
                 .child(category.name)
                 .listAll()
                 .await() // Suspends coroutine until complete
 
             listResult.items.map { it.name }
-        } catch (_: Exception) {
-            emptyList() // Or throw to propagate error
+        } catch (e: Exception) {
+            Log.e("CachedFileHandler", "getFileNamesFromCloud failed (noteId=$noteId, category=${category.name}): ${e.message}", e)
+            emptyList()
         }
     }
 
     suspend fun getFileFromCacheOrCloud(
-        documentId: String,
+        noteId: String,
         category: Category,
         filename: String
     ): Pair<File?, Boolean> {
-        assert(documentId.isNotEmpty())
+        require(noteId.isNotBlank()) { "noteId must not be blank" }
 
-        val file = makeFile(documentId, category, filename)
+        val file = makeFile(noteId, category, filename)
         if (file.exists()) {
             return Pair(file, true)
-        } else {
-            return try {
+        }
 
-                storageRef.child(documentId).child(category.name).child(filename)
-                    .getFile(file)
-                    .await()
-                // now it's already saved in cache!
-                Pair(file, false)
-            } catch (exception: Exception) {
-                println("Error getting for docID:'${documentId}' cat: ${category.name} '$filename' from cloud: " + exception.message)
-                Pair(null, false)
-            }
+        return try {
+            storageRef.child(noteId).child(category.name).child(filename)
+                .getFile(file)
+                .await()
+            // now it's already saved in cache!
+            Pair(file, false)
+        } catch (exception: Exception) {
+            Log.e(
+                "CachedFileHandler",
+                "Error downloading (noteId='$noteId' category=${category.name} filename='$filename'): ${exception.message}",
+                exception
+            )
+            Pair(null, false)
         }
     }
 
     fun uploadToCloud(qrNote: QrNote, file: File, category: Category) {
         try {
-            val docId = qrNote.documentId!!
-            val child1 = storageRef.child(docId)
+            val noteId = qrNote.documentId!!
+            val child1 = storageRef.child(noteId)
             val child2 = child1.child(category.name)
             val child = child2.child(file.name)
             child.putFile(file.toUri()).addOnSuccessListener { s ->
@@ -72,55 +76,47 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
                 println("Upload failed: " + fail.message)
                 Log.e("CachedFileHandler", "uploadToCloud failed: " + fail.message)
             }
-            } catch (e: Exception) {
+        } catch (e: Exception) {
             Log.e("CachedFileHandler", "uploadToCloud failed: " + e.message)
         }
     }
 
-    public fun storeSelectedImageInCloudAndCache(imageUri: Uri,
-                                                 qrNote: QrNote,
-                                                 imageAdapter: ImageAdapter?
+    fun storeSelectedImageInCloudAndCache(
+        imageUri: Uri,
+        qrNote: QrNote,
+        imageAdapter: ImageAdapter?
     ): Boolean {
         val outputFile: File? = try {
             context.contentResolver.openInputStream(imageUri)?.use { inputStream ->
-                val file = File(qrNote!!.ImageSubfolder(), "${System.currentTimeMillis()}.jpg")
+                val file = File(qrNote.ImageSubfolder(), "${System.currentTimeMillis()}.jpg")
                 file.outputStream().use { outputStream ->
                     inputStream.copyTo(outputStream)
                 }
-                file // Return the newly created file
+                file
             }
         } catch (e: IOException) {
             Log.e("StoreImage", "Failed to copy image to cache", e)
-            null // Return null if there was an error
+            null
         }
 
-        // Check if the file was created successfully
         if (outputFile != null && outputFile.exists()) {
-            // Update UI by adding the new image to the adapter
             imageAdapter?.imageItems?.add(ImageItem.FileImage(outputFile))
             imageAdapter?.notifyItemInserted(imageAdapter.imageItems.size - 1)
 
-            // Upload the file to Firebase Cloud Storage
-            uploadToCloud(
-                qrNote!!,
-                outputFile,
-                CachedFileHandler.Category.Images
-            )
+            uploadToCloud(qrNote, outputFile, CachedFileHandler.Category.Images)
             return true
-            // Notify the user of success
-        } else {
-            return false
-            // Notify the user of failure
         }
+
+        return false
     }
 
     fun copyFileToCache(
-        documentId: String,
+        noteId: String,
         category: Category,
         fileName: String,
         file: File
     ) {
-        val cacheFile = makeFile(documentId, category, fileName)
+        val cacheFile = makeFile(noteId, category, fileName)
         try {
             file.copyTo(cacheFile)
         } catch (e: IOException) {
@@ -129,12 +125,12 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
     }
 
     fun storeFileInCache(
-        documentId: String,
+        noteId: String,
         category: Category,
         fileName: String,
         fileUri: Uri
     ): File {
-        val cacheFile = makeFile(documentId, category, fileName)
+        val cacheFile = makeFile(noteId, category, fileName)
         try {
             // see https://stackoverflow.com/questions/10301674/save-file-in-android-with-spaces-in-file-name
             context.contentResolver.openInputStream(fileUri)?.use { inputStream ->
@@ -148,72 +144,57 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
                     }
                 }
             }
-
-            // --- END: THE FIX ---
         } catch (e: IOException) {
             Log.e("CachedFileHandler", "Failed to store file in cache: ${e.message}", e)
-            // Optionally, re-throw or handle the error more gracefully.
         }
         return cacheFile
     }
 
-    /*
-        fun clearCache() {
-            val cacheDir = context.cacheDir
-            cacheDir.deleteRecursively()
-        }
-    */
-
     fun deleteFileFromBoth(
-        documentId: String,
+        noteId: String,
         category: Category,
         fileName: String
     ) {
-        deleteFileFromCache(documentId, category, fileName)
-        deleteFileFromCloud(documentId, category, fileName)
+        deleteFileFromCache(noteId, category, fileName)
+        deleteFileFromCloud(noteId, category, fileName)
     }
 
-    fun deleteFileFromCloud(documentId: String, category: Category, name: String) {
-
-        storageRef.child(documentId).child(category.name).child(name).delete()
+    fun deleteFileFromCloud(noteId: String, category: Category, name: String) {
+        storageRef.child(noteId).child(category.name).child(name).delete()
             .addOnFailureListener { fail ->
-
                 Log.e(
                     "CachedFileHandler",
-                    "Failed to delete file: deleteFileFromCloud: docId: '${documentId}' cat:${category.name} name: '$name': ${fail.message}"
+                    "Failed to delete file from cloud: noteId='$noteId' cat=${category.name} name='$name': ${fail.message}"
                 )
             }
     }
 
     fun deleteFileFromCache(
-        documentId: String,
+        noteId: String,
         category: Category,
         fileName: String
     ) {
-
-        val cacheFile = makeFile(documentId, category, fileName)
+        val cacheFile = makeFile(noteId, category, fileName)
         try {
             cacheFile.delete()
         } catch (e: Exception) {
             Log.e(
                 "CachedFileHandler",
-                "Failed to delete file: deleteFileFromCache: docId: '${documentId}' cat:${category.name} name: '$fileName': $e"
+                "Failed to delete file from cache: noteId='$noteId' cat=${category.name} name='$fileName': $e"
             )
         }
     }
 
     fun makeFile(
-        documentId: String,
+        noteId: String,
         category: Category,
         fileName: String
     ): File {
-        val folder = File(context.cacheDir, documentId)
+        val folder = File(context.cacheDir, noteId)
         if (!folder.exists()) folder.mkdir()
         val folder2 = File(folder, category.name)
         if (!folder2.exists()) folder2.mkdir()
-        val file = File(folder2, fileName)
-        val name = file.name
-        return file
+        return File(folder2, fileName)
     }
 
     enum class Category {

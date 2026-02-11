@@ -1,7 +1,6 @@
 package com.oo_dev17.qrnotes
 
 import android.os.Environment
-import androidx.room.PrimaryKey
 import android.os.Parcel
 import android.os.Parcelable
 import android.util.Log
@@ -27,12 +26,12 @@ data class QrNote(
 ) : Parcelable {
     // Constructor to create a QrNote from a Parcel
     constructor(parcel: Parcel) : this(
-        parcel.readString()!!,
-        parcel.readString()!!,
+        parcel.readString(),
+        parcel.readString(),
         parcel.readLong(),
-        parcel.readString()!!,
-        parcel.readString()!!,
-        parcel.readString()!!
+        parcel.readString() ?: "",
+        parcel.readString(),
+        parcel.readString()
     )
 
     constructor() : this("", "", System.currentTimeMillis(), "", "")
@@ -81,8 +80,13 @@ data class QrNote(
     }
 
     suspend internal fun retrieveImageFiles(cachedFileHandler: CachedFileHandler): List<File> {
+        val docId = documentId
+        if (docId.isNullOrBlank()) {
+            Log.w("QrNote", "retrieveImageFiles called with null/blank documentId")
+            return emptyList()
+        }
 
-        val images = cachedFileHandler.getFileNamesFromCloud(this, CachedFileHandler.Category.Images)
+        val images = cachedFileHandler.getFileNamesFromCloud(docId, CachedFileHandler.Category.Images)
 
         // Reset stats before retrieving
         pictureCount = 0
@@ -92,7 +96,7 @@ data class QrNote(
         return images.mapNotNull { imageName ->
             try {
                 val (file, fromCache) = cachedFileHandler.getFileFromCacheOrCloud(
-                    this.documentId!!,
+                    docId,
                     CachedFileHandler.Category.Images,
                     imageName
                 )
@@ -109,7 +113,7 @@ data class QrNote(
             } catch (e: IOException) {
                 Log.e(
                     "QrNote",
-                    "Failed to retrieve image file '$imageName' for note '$documentId' at QrNote.retrieveImageFiles",
+                    "Failed to retrieve image file '$imageName' for note '$docId' at QrNote.retrieveImageFiles",
                     e
                 )
                 null

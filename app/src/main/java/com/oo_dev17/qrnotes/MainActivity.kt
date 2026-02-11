@@ -8,6 +8,7 @@ import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
+import androidx.activity.result.launch
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -22,8 +23,8 @@ import com.oo_dev17.qrnotes.databinding.ActivityMainBinding
 import java.io.File
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import com.google.firebase.Firebase
-import com.google.firebase.firestore.firestore
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import kotlin.jvm.java
 
 class MainActivity : AppCompatActivity() {
@@ -104,8 +105,7 @@ class MainActivity : AppCompatActivity() {
             if (!displayName.isNullOrBlank()) {
                 supportActionBar?.subtitle = displayName
             } else {
-                supportActionBar?.subtitle =
-                    "displayName is null" // Fallback if no name/email
+                supportActionBar?.subtitle = "displayName is null" // Fallback if no name/email
             }
         } else {
             // No user is signed in
@@ -178,45 +178,18 @@ class MainActivity : AppCompatActivity() {
                 startActivity(intent)
                 true
             }
+
             R.id.action_logout -> {
                 FirebaseAuth.getInstance().signOut()
                 true
             }
+
             R.id.action_quitApp -> {
                 finish()
                 true
             }
-            R.id.action_copyOldNotes -> {
-                val notesCollection = FirestoreManager.getUserNotesCollection()
-                if (notesCollection == null) {
-                    Toast.makeText(
-                        this,
-                        "User not logged in? Notes empty",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    return true
-                }
-                Firebase.firestore.collection("qrNotes").get().addOnSuccessListener { result ->
 
-                    result.forEach { documentSnapshot ->
-                        val qrNote = documentSnapshot.toObject(QrNote::class.java)
-                        qrNote.documentId = documentSnapshot.id
-                        Log.d(
-                            "FirestoreAccess",
-                            "QrNote found: Title:${qrNote.title},Content:${qrNote.content}"
-                        )
-                        notesCollection.add(qrNote).addOnSuccessListener { docRef ->
-                            Log.d("FirestoreAccess", "Note added with ID: ${docRef.id}")
-                        }
-                            .addOnFailureListener { exception ->
-                                Log.w("Firestore", "Error getting QrNotes", exception)
-                            }
-                    }
-                }.addOnFailureListener { exception ->
-                    Log.w("Firestore", "Error getting QrNotes", exception)
-                }
-                true
-            }
+
 
             R.id.action_settings -> {
                 val totalCacheSizeBytes = getCacheSize(this)
@@ -228,20 +201,14 @@ class MainActivity : AppCompatActivity() {
                         val deleted = cacheDir.deleteRecursively()
                         if (deleted) {
                             Toast.makeText(
-                                this,
-                                "Cache cleared successfully",
-                                Toast.LENGTH_SHORT
+                                this, "Cache cleared successfully", Toast.LENGTH_SHORT
                             ).show()
                         } else {
-                            Toast.makeText(this, "Failed to clear cache", Toast.LENGTH_SHORT)
-                                .show()
+                            Toast.makeText(this, "Failed to clear cache", Toast.LENGTH_SHORT).show()
                         }
-                    }
-                    .setNegativeButton("Cancel") { dialog, _ ->
+                    }.setNegativeButton("Cancel") { dialog, _ ->
                         dialog.dismiss()
-                    }
-                    .show()
-                /*
+                    }.show()/*
                 val intent = Intent(this, SettingsActivity::class.java)
                 startActivity(intent)*/
                 true
@@ -253,7 +220,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onSupportNavigateUp(): Boolean {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
-        return navController.navigateUp(appBarConfiguration)
-                || super.onSupportNavigateUp()
+        return navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
     }
 }
