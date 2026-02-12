@@ -89,6 +89,10 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
     }
 
     private fun refreshDataForCurrentUser() {
+        // If the view is already destroyed (or not created yet), binding is null.
+        // This can happen if the auth state callback fires after onDestroyView.
+        if (_binding == null) return
+
         // Step 1: Re-evaluate the user's login status to get the correct collection reference.
         notesCollection = FirestoreManager.getUserNotesCollection()
 
@@ -309,7 +313,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             try {
                 val notes = result.map { documentSnapshot ->
                     val qrNote = documentSnapshot.toObject(QrNote::class.java)
-                     qrNote.documentId = documentSnapshot.id
+                    qrNote.documentId = documentSnapshot.id
 
                     qrNote
                 }.toMutableList()

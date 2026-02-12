@@ -47,7 +47,6 @@ import com.journeyapps.barcodescanner.ScanOptions
 import com.oo_dev17.qrnotes.databinding.FragmentSecondBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
@@ -659,8 +658,8 @@ class SecondFragment : Fragment() {
         if (result.contents == null) {
             Snackbar.make(requireView(), "Scan cancelled", Snackbar.LENGTH_SHORT).show()
         } else {
-            val qrCode = result.contents // Get the scanned QR code data
-            Snackbar.make(requireView(), "Scanned: $qrCode", Snackbar.LENGTH_SHORT).show()
+            val scannedQrCode = result.contents // Get the scanned QR code data
+            Snackbar.make(requireView(), "Scanned: $scannedQrCode", Snackbar.LENGTH_SHORT).show()
             val notesCollection = FirestoreManager.getUserNotesCollection()
             if (notesCollection == null) {
                 Snackbar.make(
@@ -668,33 +667,31 @@ class SecondFragment : Fragment() {
                 ).show()
                 return@registerForActivityResult
             }
-            notesCollection.whereEqualTo(QrNote::qrCode.name, qrCode).get()
+            notesCollection.whereEqualTo(QrNote::qrCode.name, scannedQrCode).get()
                 .addOnSuccessListener { documents ->
-                    val isUsedByOtherNote = documents.any { it.id != qrNote!!.documentId }
-                    if (isUsedByOtherNote) {
-                        val otherDocumentId = documents.first { it.id != qrNote!!.documentId }.id
+                    val otherDoc = documents.firstOrNull { it.id != qrNote!!.documentId }
+                    if (otherDoc != null) {
                         showTallSnackbar(
                             requireView(),
-                            "QR code is already in use by note: $otherDocumentId",
+                            "QR code is already in use by note: ${otherDoc.id}",
                             Snackbar.LENGTH_LONG
                         )
                     } else {
-                        val customId = qrNote!!.documentId!!
-                        notesCollection.whereEqualTo(
-                            QrNote::documentId.name, customId
-                        ).limit(1).get().addOnSuccessListener {
-                            showTallSnackbar(
-                                requireView(),
-                                "QR code updated successfully.",
-                                Snackbar.LENGTH_SHORT
-                            )
-                        }.addOnFailureListener { e ->
-                            showTallSnackbar(
-                                requireView(),
-                                "Failed to update QR code: ${e.message}",
-                                Snackbar.LENGTH_LONG
-                            )
-                        }
+                        val currentId = qrNote!!.documentId!!
+                        notesCollection.document(currentId)
+                            .update(QrNote::qrCode.name, scannedQrCode).addOnSuccessListener {
+                                showTallSnackbar(
+                                    requireView(),
+                                    "QR code updated successfully.",
+                                    Snackbar.LENGTH_SHORT
+                                )
+                            }.addOnFailureListener { e ->
+                                showTallSnackbar(
+                                    requireView(),
+                                    "Failed to update QR code: ${e.message}",
+                                    Snackbar.LENGTH_LONG
+                                )
+                            }
                     }
                 }.addOnFailureListener { e ->
                     showTallSnackbar(
