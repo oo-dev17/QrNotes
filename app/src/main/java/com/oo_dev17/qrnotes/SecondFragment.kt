@@ -102,7 +102,7 @@ class SecondFragment : Fragment() {
             qrNote = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 bundle.getParcelable("qrNote", QrNote::class.java)
             } else {
-                bundle.getParcelable("qrNote")
+                @Suppress("DEPRECATION") bundle.getParcelable("qrNote")
             }
             // Use the QrNote
             if (qrNote != null) {
@@ -110,7 +110,6 @@ class SecondFragment : Fragment() {
                     Editable.Factory.getInstance().newEditable(qrNote!!.content)
                 titleText.text = qrNote?.title ?: "No title"
                 binding.qrCode.text = "QR: ${qrNote!!.qrCode}"
-                moveOrphanedPdfsToDocuments() // Move any orphaned PDFs on startup
             }
         }
 
@@ -134,60 +133,6 @@ class SecondFragment : Fragment() {
         }
 
         return binding.root
-    }
-
-    private fun moveOrphanedPdfsToDocuments() {
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val noteRootRef = storageRef.child(qrNote!!.documentId!!)
-                val listResult = noteRootRef.listAll().await()
-
-                // Filter for files directly in the note's root directory that are PDFs
-                val pdfsInRoot = listResult.items.filter {
-                    it.name.endsWith(".pdf", ignoreCase = true)
-                }
-
-                if (pdfsInRoot.isNotEmpty()) {
-                    Log.d("PdfMigration", "Found ${pdfsInRoot.size} orphaned PDF(s) to move.")
-                    val documentsFolderRef =
-                        noteRootRef.child(CachedFileHandler.Category.Documents.name)
-
-                    for (pdfRef in pdfsInRoot) {
-                        val destinationRef = documentsFolderRef.child(pdfRef.name)
-
-                        // Get file bytes
-                        val bytes = pdfRef.getBytes(Long.MAX_VALUE).await()
-
-                        // Upload to new location
-                        destinationRef.putBytes(bytes).await()
-
-                        // Delete original file
-                        pdfRef.delete().await()
-
-                        Log.d("PdfMigration", "Moved ${pdfRef.name} to Documents folder.")
-                    }
-
-                    // Refresh UI on the main thread
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            requireContext(),
-                            "Organized ${pdfsInRoot.size} PDF(s).",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        // Refresh the documents recycler view to show the moved files
-                        setupFilesRecycler()
-                    }
-                } else {
-                    Log.d("PdfMigration", "No orphaned PDFs found.")
-                }
-            } catch (e: Exception) {
-                Log.e("PdfMigration", "Error moving orphaned PDFs: ${e.message}", e)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(requireContext(), "Error organizing PDFs.", Toast.LENGTH_SHORT)
-                        .show()
-                }
-            }
-        }
     }
 
     private fun setupImagesRecycler() {
@@ -279,7 +224,6 @@ class SecondFragment : Fragment() {
                                     .setPositiveButton("Yes") { dialog, _ ->
                                         // Delete the document
                                         try {
-                                            //storageRef.child(qrNote!!.documentId!!).child(fileName).delete()
                                             // remove file entry from ui
 
                                             imageAdapter.imageItems.removeAt(position)
@@ -315,6 +259,16 @@ class SecondFragment : Fragment() {
     }
 
     private fun assertQrNoteIsInStorageRef() {
+        if (qrNote?.documentId.isNullOrBlank()) {
+            val builder =
+                android.app.AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
+            builder.setTitle("QrNote Image Menu").setMessage("We have no QrNote to show ERROR 4711")
+                .show()
+
+            Log.e("SecondFragment", "assertQrNoteIsInStorageRef: qrNote or documentId is null.")
+            return
+        }
+
         storageRef.listAll().addOnSuccessListener { listResult ->
             val childExists = listResult.prefixes.any { it.name == qrNote!!.documentId }
 
@@ -332,19 +286,30 @@ class SecondFragment : Fragment() {
     }
 
     private fun setupFilesRecycler() {
+        // NPE root cause: qrNote/documentId can be null when this is called.
+        val documentId = qrNote?.documentId
+        if (documentId.isNullOrBlank()) {
+            Log.e(
+                "SecondFragment",
+                "setupFilesRecycler: qrNote or documentId is null. Did you forget to pass qrNote in arguments?"
+            )
+            // Keep UI consistent
+            binding.recyclerViewFiles.visibility = View.GONE
+            binding.textViewEmptyDocuments.visibility = View.VISIBLE
+            return
+        }
+
         assertQrNoteIsInStorageRef()
         // Capture fragment reference as 'fragment' to avoid confusion with coroutine 'this'
-
         val fragment = this@SecondFragment
 
-
-        lifecycleScope.launch {  // Using Fragment's lifecycleScope
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val listResult = cachedFileHandler.getFileNamesFromCloud(
-                    qrNote!!.documentId!!, CachedFileHandler.Category.Documents
+                    documentId, CachedFileHandler.Category.Documents
                 )
 
-                val stringList = listResult.map { it }.toMutableList()
+                val stringList = listResult.toMutableList()
                 if (stringList.isEmpty()) {
                     // If the list is empty, hide the RecyclerView and show the placeholder text.
                     binding.recyclerViewFiles.visibility = View.GONE
@@ -359,20 +324,11 @@ class SecondFragment : Fragment() {
                 binding.recyclerViewFiles.layoutManager =
                     LinearLayoutManager(requireContext(), LinearLayoutManager.VERTICAL, false)
 
-                // Commenting out statistics part as properties don't exist on QrNote yet.
-                /*
-                for (doc in stringList) {
-                    qrNote!!.documentsCount++;
-                    if (cachedFileHandler.fileExists(qrNote!!, doc, CachedFileHandler.Category.Documents))
-                        qrNote?.docsLoadedFromCache++;
-                    Log.d("SecondFragment", "${qrNote!!.documentId}: doc found: ${doc}")
-                }
-                */
                 stringAdapter.onItemClick = { fileName ->
-                    lifecycleScope.launch {
+                    viewLifecycleOwner.lifecycleScope.launch {
                         val cachedFileHandler = CachedFileHandler(storageRef, requireContext())
                         val (file, _) = cachedFileHandler.getFileFromCacheOrCloud(
-                            qrNote!!.documentId!!, CachedFileHandler.Category.Documents, fileName
+                            documentId, CachedFileHandler.Category.Documents, fileName
                         )
                         if (file == null) {
                             Toast.makeText(
@@ -380,9 +336,6 @@ class SecondFragment : Fragment() {
                                 "Failed to load or download file $fileName.",
                                 Toast.LENGTH_SHORT
                             ).show()
-
-                            // This is how you return from a lambda.
-                            // 'return@launch' exits the coroutine block.
                             return@launch
                         }
                         OpenFile(fragment).openFileWithAssociatedApp(file, requireContext())
@@ -397,10 +350,10 @@ class SecondFragment : Fragment() {
                             // Delete the document
                             val cachedFileHandler = CachedFileHandler(storageRef, requireContext())
                             cachedFileHandler.deleteFileFromBoth(
-                                qrNote?.documentId!!, CachedFileHandler.Category.Documents, fileName
+                                documentId, CachedFileHandler.Category.Documents, fileName
                             )
                             try {
-                                storageRef.child(qrNote!!.documentId!!)
+                                storageRef.child(documentId)
                                     .child(CachedFileHandler.Category.Documents.name)
                                     .child(fileName).delete()
                                 // remove file entry from ui
@@ -596,7 +549,7 @@ class SecondFragment : Fragment() {
     private fun selectImageFromGallery() {
         val intent = Intent(Intent.ACTION_PICK)
         intent.type = "image/*"
-        startActivityForResult(intent, REQUEST_CODE_PICK_IMAGE)
+        @Suppress("DEPRECATION") startActivityForResult(intent, REQUEST_CODE_PICK_IMAGE)
     }
 
     @Deprecated("Deprecated in Java")
@@ -659,7 +612,7 @@ class SecondFragment : Fragment() {
                     }
                     val cachedFileHandler = CachedFileHandler(storageRef, context)
                     val cachedFile = cachedFileHandler.storeFileInCache(
-                        qrNote!!.documentId!!, CachedFileHandler.Category.Documents, fileName!!, uri
+                        qrNote!!.documentId!!, CachedFileHandler.Category.Documents, fileName, uri
                     )
                     if (!cachedFile.exists()) {
                         Toast.makeText(
@@ -676,7 +629,7 @@ class SecondFragment : Fragment() {
                         Toast.makeText(
                             context, "Upload failed: " + exception.message, Toast.LENGTH_SHORT
                         ).show()
-                    }.addOnSuccessListener { taskSnapshot ->
+                    }.addOnSuccessListener {
                         Toast.makeText(
                             context, "Upload successful of $fileName", Toast.LENGTH_SHORT
                         ).show()
@@ -727,29 +680,27 @@ class SecondFragment : Fragment() {
                         )
                     } else {
                         val customId = qrNote!!.documentId!!
-                        notesCollection
-                            .whereEqualTo(
-                                QrNote::documentId.name,
-                                customId
+                        notesCollection.whereEqualTo(
+                            QrNote::documentId.name, customId
+                        ).limit(1).get().addOnSuccessListener {
+                            showTallSnackbar(
+                                requireView(),
+                                "QR code updated successfully.",
+                                Snackbar.LENGTH_SHORT
                             )
-                            .limit(1)
-                            .get().addOnSuccessListener {
-                                showTallSnackbar(
-                                    requireView(),
-                                    "QR code updated successfully.",
-                                    Snackbar.LENGTH_SHORT
-                                )
-                            }.addOnFailureListener { e ->
-                                showTallSnackbar(
-                                    requireView(),
-                                    "Failed to update QR code: ${e.message}",
-                                    Snackbar.LENGTH_LONG
-                                )
-                            }
+                        }.addOnFailureListener { e ->
+                            showTallSnackbar(
+                                requireView(),
+                                "Failed to update QR code: ${e.message}",
+                                Snackbar.LENGTH_LONG
+                            )
+                        }
                     }
                 }.addOnFailureListener { e ->
                     showTallSnackbar(
-                        requireView(), "Failed to query for QR code: ${e.message}", Snackbar.LENGTH_LONG
+                        requireView(),
+                        "Failed to query for QR code: ${e.message}",
+                        Snackbar.LENGTH_LONG
                     )
                 }
         }
@@ -762,8 +713,8 @@ class SecondFragment : Fragment() {
 
         val snackView: View = snackbar.view // <-- DO NOT cast to SnackbarLayout
 
-        val textView =
-            snackView.findViewById<TextView>(com.google.android.material.R.id.snackbar_text)
+        // Use the app's R; library R classes are not accessible in some AGP versions.
+        val textView = snackView.findViewById<TextView>(R.id.snackbar_text)
 
         // regular-ish text size + multiline
         textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
@@ -786,7 +737,7 @@ class SecondFragment : Fragment() {
         newLp.width = ViewGroup.LayoutParams.WRAP_CONTENT
         newLp.height = ViewGroup.LayoutParams.WRAP_CONTENT
         newLp.gravity = Gravity.CENTER
-        snackView.layoutParams = newLp // <-- set via View, not SnackbarBaseLayout
+        snackView.layoutParams = newLp
 
         // optional colors
         ViewCompat.setBackgroundTintList(
@@ -862,6 +813,11 @@ class SecondFragment : Fragment() {
             return
         }
         val docRef = notesCollection.document(qrNote!!.documentId!!)
+        if (docRef == null) {
+            Toast.makeText(
+                requireContext(), "User not logged in? Notes empty", Toast.LENGTH_SHORT
+            ).show()
+        }
         firestoreListener = docRef.addSnapshotListener { snapshot, error ->
             if (error != null) {
                 Log.e("FirestoreListener", "Listen failed.", error)
@@ -872,7 +828,7 @@ class SecondFragment : Fragment() {
                 // --- THIS IS THE MAGIC ---
                 // Firestore has new data. Convert it to your QrNote object.
                 qrNote = snapshot.toObject(QrNote::class.java)
-                if (false) qrNote?.documentId = snapshot.id
+                qrNote?.documentId = snapshot.id
 
                 // Update your entire UI with the fresh data from the SSoT.
                 updateUiWithNewData()

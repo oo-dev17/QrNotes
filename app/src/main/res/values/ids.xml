@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Alias ID used to access Material Snackbar's text view without referencing library R classes -->
+    <item name="snackbar_text" type="id" />
+</resources>

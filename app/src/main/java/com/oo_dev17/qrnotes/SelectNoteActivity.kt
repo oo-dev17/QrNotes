@@ -70,8 +70,6 @@ class SelectNoteActivity : AppCompatActivity() {
         binding.recyclerViewNoteSelection.layoutManager = LinearLayoutManager(this)
     }
 
-
-
     // In SelectNoteActivity.kt
     private fun loadNotes() {
         lifecycleScope.launch {
@@ -93,7 +91,7 @@ class SelectNoteActivity : AppCompatActivity() {
 
                 val notes = snapshot.documents.map { document ->
                     val note = document.toObject(QrNote::class.java)
-                    if (false)   note?.documentId = document.id
+                    note?.documentId = document.id
                     note
                 }.filterNotNull()
 
@@ -107,6 +105,7 @@ class SelectNoteActivity : AppCompatActivity() {
             }
         }
     }
+
     private fun processSharedFile(targetNote: QrNote) {
         Toast.makeText(this, "Adding file to '${targetNote.title}'...", Toast.LENGTH_LONG).show()
 

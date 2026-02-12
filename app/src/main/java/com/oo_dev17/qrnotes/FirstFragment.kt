@@ -211,7 +211,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                     ).show()
                     val builder =
                         android.app.AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
-                    builder.setTitle("QrNote Image Menu")
+                    builder.setTitle("QrNote Info")
                         .setMessage("QR code $scannedData not found, do you want to create a new note?")
                         .setPositiveButton("YES") { dialog, _ ->
                             dialog.dismiss()
@@ -309,10 +309,8 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             try {
                 val notes = result.map { documentSnapshot ->
                     val qrNote = documentSnapshot.toObject(QrNote::class.java)
-                    qrNote.copy()
-                    if (qrNote.documentId == null) {
-                        if (false)  qrNote.documentId = documentSnapshot.id
-                    }
+                     qrNote.documentId = documentSnapshot.id
+
                     qrNote
                 }.toMutableList()
 

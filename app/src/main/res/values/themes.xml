@@ -5,17 +5,14 @@
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>
 
-    <style name="Theme.QrNotes" parent="Base.Theme.QrNotes" />
-    <!-- 1. Use a Material3 Dialog Theme as the parent -->
-    <style name="AlertDialogTheme" parent="ThemeOverlay.Material3.Dialog.Alert">
-        <!-- 2. Use colorSurface to set the dialog's background color -->
-        <item name="colorSurface">@color/black</item>
+    <style name="AlertDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <!-- Dialog container/background -->
+        <item name="colorSurfaceContainerHigh">@color/black</item>
 
-        <!-- 3. Use materialAlertDialogBodyTextStyle to style the message -->
+        <!-- Message/body text -->
         <item name="materialAlertDialogBodyTextStyle">@style/AlertDialogBodyTextStyle</item>
-        <item name="backgroundColor">@color/black</item>
 
-        <!-- 4. Style the buttons using buttonBarPositive/Negative/NeutralButtonStyle -->
+        <!-- Buttons -->
         <item name="buttonBarPositiveButtonStyle">@style/AlertDialogButtonStyle</item>
         <item name="buttonBarNegativeButtonStyle">@style/AlertDialogButtonStyle</item>
         <item name="buttonBarNeutralButtonStyle">@style/AlertDialogButtonStyle</item>
