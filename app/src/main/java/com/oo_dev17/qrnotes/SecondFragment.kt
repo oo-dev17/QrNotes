@@ -671,9 +671,11 @@ class SecondFragment : Fragment() {
                 .addOnSuccessListener { documents ->
                     val otherDoc = documents.firstOrNull { it.id != qrNote!!.documentId }
                     if (otherDoc != null) {
+                        val otherTitle = otherDoc.getString(QrNote::title.name) ?: "Untitled"
+
                         showTallSnackbar(
                             requireView(),
-                            "QR code is already in use by note: ${otherDoc.id}",
+                            "QR code is already in use by note: $otherTitle (${otherDoc.id})",
                             Snackbar.LENGTH_LONG
                         )
                     } else {
