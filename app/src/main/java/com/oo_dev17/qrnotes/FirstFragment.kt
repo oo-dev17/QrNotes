@@ -366,7 +366,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             .setMessage("$info\n\n\nWhat do you want to do with this QrNote?")
             .setPositiveButton("Delete") { dialog, _ ->
                 AlertDialog.Builder(requireContext()).setTitle("Delete QrNote")
-                    .setMessage("Are you sure you want to delete this QrNote?")
+                    .setMessage("Are you sure you want to delete this QrNote ${qrNote.title}?")
                     .setPositiveButton("Yes") { dialog, _ ->
                         deleteQrNote(qrNote)
                         dialog.dismiss()

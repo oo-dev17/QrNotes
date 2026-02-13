@@ -190,8 +190,8 @@ class SecondFragment : Fragment() {
                         val builder =
                             AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
                         builder.setTitle("QrNote Image Menu")
-                            .setMessage("What do you want to do with img ${imageItem.file.name} ?")
-                            .setNeutralButton("Make gallery picture") { dialog, _ ->
+                            .setMessage("What to do with img ${imageItem.file.name} ?")
+                            .setNeutralButton("Set as gallery picture") { dialog, _ ->
                                 val qrNoteDocumentId = qrNote!!.documentId!!
                                 val newGalleryPicName = imageItem.file.name
                                 val notesCollection = FirestoreManager.getUserNotesCollection()
@@ -347,23 +347,32 @@ class SecondFragment : Fragment() {
                         .setMessage("What do you want to do with doc $fileName ?")
                         .setPositiveButton("Delete") { dialog, _ ->
                             // Delete the document
-                            val cachedFileHandler = CachedFileHandler(storageRef, requireContext())
-                            cachedFileHandler.deleteFileFromBoth(
-                                documentId, CachedFileHandler.Category.Documents, fileName
-                            )
-                            try {
-                                storageRef.child(documentId)
-                                    .child(CachedFileHandler.Category.Documents.name)
-                                    .child(fileName).delete()
-                                // remove file entry from ui
-                                stringList.removeAt(position)
-                                stringAdapter.notifyDataSetChanged()
-                                dialog.dismiss()
-                            } catch (e: Exception) {
-                                Snackbar.make(
-                                    requireView(), "Delete fail: " + e.message, Snackbar.LENGTH_LONG
-                                ).show()
-                            }
+                            builder.setTitle("Delete Document")
+                                .setMessage("Are you sure you want to delete this document?")
+                                .setPositiveButton("Yes") { dialog, _ ->
+
+                                    val cachedFileHandler =
+                                        CachedFileHandler(storageRef, requireContext())
+                                    cachedFileHandler.deleteFileFromBoth(
+                                        documentId, CachedFileHandler.Category.Documents, fileName
+                                    )
+                                    try {
+                                        storageRef.child(documentId)
+                                            .child(CachedFileHandler.Category.Documents.name)
+                                            .child(fileName).delete()
+                                        // remove file entry from ui
+                                        stringList.removeAt(position)
+                                        stringAdapter.notifyDataSetChanged()
+                                        dialog.dismiss()
+                                    } catch (e: Exception) {
+                                        Snackbar.make(
+                                            requireView(),
+                                            "Delete fail: " + e.message,
+                                            Snackbar.LENGTH_LONG
+                                        ).show()
+                                    }
+                                    dialog.dismiss()
+                                }
                             dialog.dismiss()
                         }.setNegativeButton("Cancel") { dialog, _ ->
                             dialog.dismiss()
