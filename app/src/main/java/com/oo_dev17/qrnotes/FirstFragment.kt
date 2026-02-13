@@ -70,7 +70,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             showTitleInputDialog()
         }
         binding.fabScanQr.setOnClickListener { _ ->
-            launchQRCodeScanner()
+            scanLauncher1.launch(buildQrScanOptions("Scan a QR code"))
         }
         return binding.root
     }
@@ -188,11 +188,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         }
     }
 
-    private fun launchQRCodeScanner() {
-        scanLauncher1.launch(buildQrScanOptions("Scan a QR code"))
-    }
-
-    private val scanLauncher1 = registerForActivityResult(ScanContract()) { result ->
+       private val scanLauncher1 = registerForActivityResult(ScanContract()) { result ->
         if (result.contents != null) {
             val scannedData = result.contents // Get the scanned QR code data
             try {

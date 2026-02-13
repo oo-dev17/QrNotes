@@ -483,11 +483,7 @@ class SecondFragment : Fragment() {
         }
     }
 
-    private fun launchQRCodeScanner() {
-        scanLauncher.launch(buildQrScanOptions("Scan a new QR code"))
-    }
-
-    private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
+       private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
         if (result.contents == null) {
             Snackbar.make(requireView(), "Scan cancelled", Snackbar.LENGTH_SHORT).show()
         } else {
@@ -839,7 +835,7 @@ class SecondFragment : Fragment() {
                 NoteAction.SCAN_NEW_QR_CODE -> {
                     // --- HANDLE THE ACTION HERE ---
                     // The user clicked the menu item, so launch the scanner.
-                    launchQRCodeScanner()
+                    scanLauncher.launch(buildQrScanOptions("Scan a new QR code"))
 
                     // IMPORTANT: Reset the action so it doesn't run again
                     // if the user rotates the screen or navigates back.
