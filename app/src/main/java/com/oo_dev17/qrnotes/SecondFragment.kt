@@ -415,13 +415,12 @@ class SecondFragment : Fragment() {
                 )
 
                 val stringList = listResult.toMutableList()
-                if (stringList.isEmpty()) {
-                    binding.recyclerViewFiles.visibility = View.GONE
-                    binding.textViewEmptyDocuments.visibility = View.VISIBLE
-                } else {
-                    binding.recyclerViewFiles.visibility = View.VISIBLE
-                    binding.textViewEmptyDocuments.visibility = View.GONE
-                }
+
+                // IMPORTANT: Keep the recycler visible even when empty so the empty label can
+                // be centered inside its bounds.
+                binding.recyclerViewFiles.visibility = View.VISIBLE
+                binding.textViewEmptyDocuments.visibility =
+                    if (stringList.isEmpty()) View.VISIBLE else View.GONE
 
                 stringAdapter = DocumentAdapter(stringList)
                 binding.recyclerViewFiles.adapter = stringAdapter
@@ -470,8 +469,12 @@ class SecondFragment : Fragment() {
                                             .child(fileName)
                                             .delete()
 
-                                        stringList.removeAt(position)
+                                        stringAdapter.stringList.removeAt(position)
                                         stringAdapter.notifyDataSetChanged()
+
+                                        // Update empty label state after delete
+                                        binding.textViewEmptyDocuments.visibility =
+                                            if (stringAdapter.stringList.isEmpty()) View.VISIBLE else View.GONE
                                     } catch (e: Exception) {
                                         Snackbar.make(
                                             requireView(),
