@@ -2,7 +2,6 @@ package com.oo_dev17.qrnotes
 
 import android.Manifest
 import android.app.AlertDialog
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -70,7 +69,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             showTitleInputDialog()
         }
         binding.fabScanQr.setOnClickListener { _ ->
-            scanLauncher1.launch(buildQrScanOptions("Scan a QR code"))
+            launchQRCodeScanner()
         }
         return binding.root
     }
@@ -188,7 +187,11 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         }
     }
 
-       private val scanLauncher1 = registerForActivityResult(ScanContract()) { result ->
+    private fun launchQRCodeScanner() {
+        scanLauncher1.launch(buildQrScanOptions("Scan a QR code"))
+    }
+
+    private val scanLauncher1 = registerForActivityResult(ScanContract()) { result ->
         if (result.contents != null) {
             val scannedData = result.contents // Get the scanned QR code data
             try {
@@ -219,11 +222,6 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             }
         }
 
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

@@ -73,6 +73,88 @@ class SecondFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
+    // --- Activity Result API launchers (replaces onActivityResult / startActivityForResult) ---
+
+    // Gallery image picker
+    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri == null || qrNote == null) return@registerForActivityResult
+
+        val cachedFileHandler = CachedFileHandler(storageRef, requireContext())
+        if (
+            cachedFileHandler.storeSelectedImageInCloudAndCache(
+                uri,
+                qrNote!!,
+                imageAdapter
+            )
+        ) {
+            Snackbar.make(requireView(), "Image loaded!", Snackbar.LENGTH_SHORT).show()
+        } else {
+            Snackbar.make(requireView(), "Image failed to load!", Snackbar.LENGTH_SHORT).show()
+        }
+    }
+
+    // Document picker used by OpenFile.selectDocToAdd()
+    // NOTE: This is intentionally public so OpenFile can launch it.
+    val pickDocumentLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
+
+        val uri = result.data?.data
+        if (uri == null || qrNote == null) return@registerForActivityResult
+
+        val context = requireContext()
+        val contentResolver = context.contentResolver
+        var fileName = "unknown_document"
+        val mimeType = contentResolver.getType(uri)
+
+        val cursor = contentResolver.query(uri, null, null, null, null)
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val displayName = it.getString(it.getColumnIndexOrThrow("_display_name"))
+
+                // Check if the display name already has an extension
+                fileName = if (!displayName.contains(".")) {
+                    val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
+                    if (extension.isNullOrBlank()) displayName else "$displayName.$extension"
+                } else {
+                    displayName
+                }
+            }
+        }
+
+        val cachedFileHandler = CachedFileHandler(storageRef, context)
+        val cachedFile = cachedFileHandler.storeFileInCache(
+            qrNote!!.documentId!!,
+            CachedFileHandler.Category.Documents,
+            fileName,
+            uri
+        )
+        if (!cachedFile.exists()) {
+            Toast.makeText(context, "Failed to save document locally.", Toast.LENGTH_SHORT).show()
+            return@registerForActivityResult
+        }
+
+        val documentRef = storageRef.child(qrNote!!.documentId!!)
+            .child(CachedFileHandler.Category.Documents.name)
+            .child(fileName)
+
+        val uploadTask = documentRef.putFile(uri)
+
+        uploadTask.addOnFailureListener { exception ->
+            Toast.makeText(context, "Upload failed: " + exception.message, Toast.LENGTH_SHORT).show()
+        }.addOnSuccessListener {
+            Toast.makeText(context, "Upload successful of $fileName", Toast.LENGTH_SHORT).show()
+
+            val wasEmpty = stringAdapter.itemCount == 0
+            stringAdapter.stringList.add(fileName)
+            stringAdapter.notifyItemInserted(stringAdapter.itemCount - 1)
+
+            if (wasEmpty) {
+                binding.recyclerViewFiles.visibility = View.VISIBLE
+                binding.textViewEmptyDocuments.visibility = View.GONE
+            }
+        }
+    }
+
     override fun onPause() {
         super.onPause()
         saveText()
@@ -483,7 +565,11 @@ class SecondFragment : Fragment() {
         }
     }
 
-       private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
+    private fun launchQRCodeScanner() {
+        scanLauncher.launch(buildQrScanOptions("Scan a new QR code"))
+    }
+
+    private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
         if (result.contents == null) {
             Snackbar.make(requireView(), "Scan cancelled", Snackbar.LENGTH_SHORT).show()
         } else {
@@ -602,106 +688,8 @@ class SecondFragment : Fragment() {
         }
     }
 
-    private val REQUEST_CODE_PICK_IMAGE = 101
-
     private fun selectImageFromGallery() {
-        val intent = Intent(Intent.ACTION_PICK)
-        intent.type = "image/*"
-        @Suppress("DEPRECATION") startActivityForResult(intent, REQUEST_CODE_PICK_IMAGE)
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        getContext()?.let { context ->
-            // This block will only execute if the context is not null
-            // ... proceed with your logic using 'context'
-            super.onActivityResult(requestCode, resultCode, data)
-            if (requestCode == REQUEST_CODE_PICK_IMAGE && resultCode == Activity.RESULT_OK) {
-                val selectedImageUri: Uri? = data?.data
-                if (selectedImageUri != null) {
-                    // Load the selected image into an ImageView or process it
-                    val cachedFileHandler = CachedFileHandler(storageRef, context)
-                    if (cachedFileHandler.storeSelectedImageInCloudAndCache(
-                            selectedImageUri, qrNote!!, imageAdapter
-                        )
-                    ) Snackbar.make(requireView(), "Image loaded!", Snackbar.LENGTH_SHORT).show()
-                    else Snackbar.make(
-                        requireView(), "Image failed to load!", Snackbar.LENGTH_SHORT
-                    ).show()
-                }
-            }
-            if (requestCode == REQUEST_CODE_CAMERA && resultCode == Activity.RESULT_OK) {
-                val imageBitmap = data?.extras?.get("data") as? Bitmap
-                if (imageBitmap != null) {
-                    // Display the captured image
-                    loadCapturedImage(imageBitmap)
-                }
-                val imageFile = photoFile
-                if (imageFile != null && imageFile.exists()) {
-                    // Notify the MediaStore about the new file
-                    scanFile(imageFile)
-                }
-            }
-            if (requestCode == REQUEST_CODE_PICK_DOCUMENT && resultCode == Activity.RESULT_OK) {
-                val uri = data?.data // This is the selected file's URI
-                if (uri != null && qrNote != null) {
-                    val contentResolver = context.contentResolver
-                    var fileName = "unknown_document"
-                    val mimeType = contentResolver.getType(uri)
-                    val cursor = contentResolver.query(uri, null, null, null, null)
-                    cursor?.moveToFirst()
-                    cursor?.use {
-                        if (it.moveToFirst()) {
-                            val displayName =
-                                it.getString(it.getColumnIndexOrThrow("_display_name"))
-
-                            // Check if the display name already has an extension
-                            if (!displayName.contains(".")) {
-                                // If not, get the extension from the MIME type
-                                val extension =
-                                    MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
-                                // Append the extension to the display name
-                                fileName = "$displayName.$extension"
-                            } else {
-                                // If it already has an extension, use it directly
-                                fileName = displayName
-                            }
-                        }
-                    }
-                    val cachedFileHandler = CachedFileHandler(storageRef, context)
-                    val cachedFile = cachedFileHandler.storeFileInCache(
-                        qrNote!!.documentId!!, CachedFileHandler.Category.Documents, fileName, uri
-                    )
-                    if (!cachedFile.exists()) {
-                        Toast.makeText(
-                            context, "Failed to save document locally.", Toast.LENGTH_SHORT
-                        ).show()
-                        return // Stop if local save failed
-                    }
-
-                    val documentRef = storageRef.child(qrNote!!.documentId!!)
-                        .child(CachedFileHandler.Category.Documents.name).child(fileName)
-                    val uploadTask = documentRef.putFile(uri)
-
-                    uploadTask.addOnFailureListener { exception ->
-                        Toast.makeText(
-                            context, "Upload failed: " + exception.message, Toast.LENGTH_SHORT
-                        ).show()
-                    }.addOnSuccessListener {
-                        Toast.makeText(
-                            context, "Upload successful of $fileName", Toast.LENGTH_SHORT
-                        ).show()
-                        val wasEmpty = stringAdapter.itemCount == 0
-                        stringAdapter.stringList.add(fileName)
-                        stringAdapter.notifyItemInserted(stringAdapter.itemCount - 1)
-                        if (wasEmpty) {
-                            binding.recyclerViewFiles.visibility = View.VISIBLE
-                            binding.textViewEmptyDocuments.visibility = View.GONE
-                        }
-                    }
-                }
-            }
-        }
+        pickImageLauncher.launch("image/*")
     }
 
     private fun loadCapturedImage(bitmap: Bitmap) {
@@ -835,7 +823,7 @@ class SecondFragment : Fragment() {
                 NoteAction.SCAN_NEW_QR_CODE -> {
                     // --- HANDLE THE ACTION HERE ---
                     // The user clicked the menu item, so launch the scanner.
-                    scanLauncher.launch(buildQrScanOptions("Scan a new QR code"))
+                    launchQRCodeScanner()
 
                     // IMPORTANT: Reset the action so it doesn't run again
                     // if the user rotates the screen or navigates back.
