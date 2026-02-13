@@ -5,7 +5,6 @@ import ImageAdapter
 import android.Manifest
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
-import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -617,16 +616,6 @@ class SecondFragment : Fragment() {
             Log.e("SecondFragment", "Error creating image file", ex)
             Snackbar.make(requireView(), "Could not create image file.", Snackbar.LENGTH_LONG)
                 .show()
-        }
-    }
-
-    private fun scanFile(file: File) {
-        MediaScannerConnection.scanFile(
-            requireContext(),
-            arrayOf(file.absolutePath),
-            null
-        ) { path, uri ->
-            Log.d("MediaScan", "Scanned file: $path, URI: $uri")
         }
     }
 
