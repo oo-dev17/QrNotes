@@ -43,7 +43,6 @@ import com.google.firebase.Firebase
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.storage.storage
 import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
 import com.oo_dev17.qrnotes.databinding.FragmentSecondBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -484,6 +483,61 @@ class SecondFragment : Fragment() {
         }
     }
 
+    private fun launchQRCodeScanner() {
+        scanLauncher.launch(buildQrScanOptions("Scan a new QR code"))
+    }
+
+    private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
+        if (result.contents == null) {
+            Snackbar.make(requireView(), "Scan cancelled", Snackbar.LENGTH_SHORT).show()
+        } else {
+            val scannedQrCode = result.contents // Get the scanned QR code data
+            Snackbar.make(requireView(), "Scanned: $scannedQrCode", Snackbar.LENGTH_SHORT).show()
+            val notesCollection = FirestoreManager.getUserNotesCollection()
+            if (notesCollection == null) {
+                Snackbar.make(
+                    requireView(), "User not logged in? Notes empty", Snackbar.LENGTH_SHORT
+                ).show()
+                return@registerForActivityResult
+            }
+            notesCollection.whereEqualTo(QrNote::qrCode.name, scannedQrCode).get()
+                .addOnSuccessListener { documents ->
+                    val otherDoc = documents.firstOrNull { it.id != qrNote!!.documentId }
+                    if (otherDoc != null) {
+                        val otherTitle = otherDoc.getString(QrNote::title.name) ?: "Untitled"
+                        showTallSnackbar(
+                            requireView(),
+                            "QR code is already in use by note: $otherTitle (${otherDoc.id})",
+                            Snackbar.LENGTH_LONG
+                        )
+                    } else {
+                        val currentId = qrNote!!.documentId!!
+                        notesCollection.document(currentId)
+                            .update(QrNote::qrCode.name, scannedQrCode)
+                            .addOnSuccessListener {
+                                showTallSnackbar(
+                                    requireView(),
+                                    "QR code updated successfully.",
+                                    Snackbar.LENGTH_SHORT
+                                )
+                            }.addOnFailureListener { e ->
+                                showTallSnackbar(
+                                    requireView(),
+                                    "Failed to update QR code: ${e.message}",
+                                    Snackbar.LENGTH_LONG
+                                )
+                            }
+                    }
+                }.addOnFailureListener { e ->
+                    showTallSnackbar(
+                        requireView(),
+                        "Failed to query for QR code: ${e.message}",
+                        Snackbar.LENGTH_LONG
+                    )
+                }
+        }
+    }
+
     private val REQUEST_CODE_CAMERA = 201
 
     private fun openCamera() {
@@ -663,57 +717,6 @@ class SecondFragment : Fragment() {
         Snackbar.make(requireView(), "Image captured from camera", Snackbar.LENGTH_SHORT).show()
     }
 
-    private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
-        if (result.contents == null) {
-            Snackbar.make(requireView(), "Scan cancelled", Snackbar.LENGTH_SHORT).show()
-        } else {
-            val scannedQrCode = result.contents // Get the scanned QR code data
-            Snackbar.make(requireView(), "Scanned: $scannedQrCode", Snackbar.LENGTH_SHORT).show()
-            val notesCollection = FirestoreManager.getUserNotesCollection()
-            if (notesCollection == null) {
-                Snackbar.make(
-                    requireView(), "User not logged in? Notes empty", Snackbar.LENGTH_SHORT
-                ).show()
-                return@registerForActivityResult
-            }
-            notesCollection.whereEqualTo(QrNote::qrCode.name, scannedQrCode).get()
-                .addOnSuccessListener { documents ->
-                    val otherDoc = documents.firstOrNull { it.id != qrNote!!.documentId }
-                    if (otherDoc != null) {
-                        val otherTitle = otherDoc.getString(QrNote::title.name) ?: "Untitled"
-
-                        showTallSnackbar(
-                            requireView(),
-                            "QR code is already in use by note: $otherTitle (${otherDoc.id})",
-                            Snackbar.LENGTH_LONG
-                        )
-                    } else {
-                        val currentId = qrNote!!.documentId!!
-                        notesCollection.document(currentId)
-                            .update(QrNote::qrCode.name, scannedQrCode).addOnSuccessListener {
-                                showTallSnackbar(
-                                    requireView(),
-                                    "QR code updated successfully.",
-                                    Snackbar.LENGTH_SHORT
-                                )
-                            }.addOnFailureListener { e ->
-                                showTallSnackbar(
-                                    requireView(),
-                                    "Failed to update QR code: ${e.message}",
-                                    Snackbar.LENGTH_LONG
-                                )
-                            }
-                    }
-                }.addOnFailureListener { e ->
-                    showTallSnackbar(
-                        requireView(),
-                        "Failed to query for QR code: ${e.message}",
-                        Snackbar.LENGTH_LONG
-                    )
-                }
-        }
-    }
-
     private fun showTallSnackbar(
         anchor: View, message: String, duration: Int = Snackbar.LENGTH_LONG
     ) {
@@ -760,21 +763,6 @@ class SecondFragment : Fragment() {
     private fun dpToPx(dp: Int): Int {
         val density = resources.displayMetrics.density
         return (dp * density).toInt()
-    }
-
-    private fun launchQRCodeScanner() {
-        val options = ScanOptions().apply {
-            setDesiredBarcodeFormats(
-                listOf(
-                    ScanOptions.EAN_13, ScanOptions.EAN_8, ScanOptions.QR_CODE
-                )
-            ) // Specify QR code format
-            setPrompt("Scan a new QR code") // Set a prompt
-            setCameraId(0) // Use the default camera
-            setBeepEnabled(true) // Play a beep sound
-            setBarcodeImageEnabled(true) // Enable saving the barcode image
-        }
-        scanLauncher.launch(options) // Launch the scanner
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

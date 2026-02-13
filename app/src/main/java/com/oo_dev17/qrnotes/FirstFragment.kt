@@ -26,7 +26,6 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
 import com.google.firebase.storage.storage
 import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
 import com.oo_dev17.qrnotes.databinding.FragmentFirstBinding
 import kotlinx.coroutines.CoroutineScope
 import java.text.SimpleDateFormat
@@ -71,7 +70,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             showTitleInputDialog()
         }
         binding.fabScanQr.setOnClickListener { _ ->
-            launchQRCodeScanner1()
+            launchQRCodeScanner()
         }
         return binding.root
     }
@@ -189,19 +188,8 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
         }
     }
 
-    private fun launchQRCodeScanner1() {
-        val options = ScanOptions().apply {
-            setDesiredBarcodeFormats(
-                listOf(
-                    ScanOptions.EAN_13, ScanOptions.EAN_8, ScanOptions.QR_CODE
-                )
-            ) // Specify QR code format
-            setPrompt("Scan a QR code") // Set a prompt
-            setCameraId(0) // Use the default camera
-            setBeepEnabled(true) // Play a beep sound
-            setBarcodeImageEnabled(true) // Enable saving the barcode image
-        }
-        scanLauncher1.launch(options) // Launch the scanner
+    private fun launchQRCodeScanner() {
+        scanLauncher1.launch(buildQrScanOptions("Scan a QR code"))
     }
 
     private val scanLauncher1 = registerForActivityResult(ScanContract()) { result ->
@@ -366,7 +354,7 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
             .setMessage("$info\n\n\nWhat do you want to do with this QrNote?")
             .setPositiveButton("Delete") { dialog, _ ->
                 AlertDialog.Builder(requireContext()).setTitle("Delete QrNote")
-                    .setMessage("Are you sure you want to delete this QrNote ${qrNote.title}?")
+                    .setMessage("Are you sure you want to delete this QrNote?")
                     .setPositiveButton("Yes") { dialog, _ ->
                         deleteQrNote(qrNote)
                         dialog.dismiss()
