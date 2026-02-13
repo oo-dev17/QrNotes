@@ -24,7 +24,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
@@ -67,6 +66,33 @@ class SecondFragment : Fragment() {
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
+
+    // --- Permission launchers (replaces requestPermissions + onRequestPermissionsResult) ---
+
+    private var pendingOpenGalleryAfterPermission = false
+    private val readImagesPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                if (pendingOpenGalleryAfterPermission) {
+                    pendingOpenGalleryAfterPermission = false
+                    selectImageFromGallery()
+                }
+            } else {
+                pendingOpenGalleryAfterPermission = false
+                Snackbar.make(requireView(), "Storage permission denied", Snackbar.LENGTH_SHORT)
+                    .show()
+            }
+        }
+
+    private val cameraPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                openCamera()
+            } else {
+                Snackbar.make(requireView(), "Camera permission denied", Snackbar.LENGTH_SHORT)
+                    .show()
+            }
+        }
 
     // --- Activity Result API launchers ---
 
@@ -219,7 +245,8 @@ class SecondFragment : Fragment() {
 
         Linkify.addLinks(textviewSecond, Linkify.WEB_URLS)
         try {
-            checkStoragePermission(false)
+            // Ask once during view creation
+            checkStoragePermission(openGallery = false)
             setupImagesRecycler()
             setupFilesRecycler()
         } catch (e: Exception) {
@@ -247,11 +274,11 @@ class SecondFragment : Fragment() {
             binding.recyclerViewImages.adapter = concatAdapter
 
             buttonAdapter.onAddCameraClick = {
-                openCamera()
+                checkCameraPermissionAndOpen()
             }
 
             buttonAdapter.onAddGalleryClick = {
-                selectImageFromGallery()
+                checkStoragePermission(openGallery = true)
             }
 
             imageAdapter.onItemClick = { imageItem ->
@@ -263,9 +290,9 @@ class SecondFragment : Fragment() {
 
                     is ImageItem.ResourceImage -> {
                         if (imageItem.resId == R.drawable.plus_sign) {
-                            checkStoragePermission(true)
+                            checkStoragePermission(openGallery = true)
                         } else if (imageItem.resId == android.R.drawable.ic_menu_camera) {
-                            checkCameraPermission()
+                            checkCameraPermissionAndOpen()
                         }
                     }
                 }
@@ -494,8 +521,6 @@ class SecondFragment : Fragment() {
         )
     }
 
-    private val REQUEST_CODE_WRITE_EXTERNAL_STORAGE = 100
-
     private fun checkStoragePermission(openGallery: Boolean) {
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Manifest.permission.READ_MEDIA_IMAGES
@@ -503,73 +528,20 @@ class SecondFragment : Fragment() {
             @Suppress("DEPRECATION") Manifest.permission.READ_EXTERNAL_STORAGE
         }
 
-        if (ContextCompat.checkSelfPermission(
-                requireContext(),
-                permission
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                requireActivity(),
-                arrayOf(permission),
-                REQUEST_CODE_WRITE_EXTERNAL_STORAGE
-            )
+        if (ContextCompat.checkSelfPermission(requireContext(), permission) == PackageManager.PERMISSION_GRANTED) {
             if (openGallery) selectImageFromGallery()
-        } else {
-            if (openGallery) selectImageFromGallery()
+            return
         }
+
+        pendingOpenGalleryAfterPermission = openGallery
+        readImagesPermissionLauncher.launch(permission)
     }
 
-    private val REQUEST_CODE_CAMERA_PERMISSION = 200
-
-    private fun checkCameraPermission() {
-        if (ContextCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.CAMERA
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                requireActivity(),
-                arrayOf(Manifest.permission.CAMERA),
-                REQUEST_CODE_CAMERA_PERMISSION
-            )
+    private fun checkCameraPermissionAndOpen() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             openCamera()
         } else {
-            openCamera()
-        }
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CODE_WRITE_EXTERNAL_STORAGE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                selectImageFromGallery()
-            } else {
-                binding.recyclerViewImages.post {
-                    Snackbar.make(
-                        requireView(),
-                        "Storage permission denied",
-                        Snackbar.LENGTH_SHORT
-                    ).show()
-                }
-            }
-        }
-        if (requestCode == REQUEST_CODE_CAMERA_PERMISSION) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                openCamera()
-            } else {
-                binding.recyclerViewImages.post {
-                    Snackbar.make(
-                        requireView(),
-                        "Camera permission denied",
-                        Snackbar.LENGTH_SHORT
-                    ).show()
-                }
-            }
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
