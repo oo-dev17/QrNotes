@@ -23,9 +23,6 @@ import com.oo_dev17.qrnotes.databinding.ActivityMainBinding
 import java.io.File
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
-import kotlin.jvm.java
 
 class MainActivity : AppCompatActivity() {
     private lateinit var sharedDb: FirebaseFirestore
@@ -42,7 +39,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-
         auth = FirebaseAuth.getInstance()
         binding = ActivityMainBinding.inflate(layoutInflater)
 
@@ -50,9 +46,7 @@ class MainActivity : AppCompatActivity() {
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, windowInsets ->
             val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            // Apply the insets as padding to the view.
             view.setPadding(insets.left, insets.top, insets.right, insets.bottom)
-            // Return the insets so that other views can also use them
             WindowInsetsCompat.CONSUMED
         }
         setSupportActionBar(binding.toolbar)
@@ -68,7 +62,7 @@ class MainActivity : AppCompatActivity() {
 
         if (Intent.ACTION_SEND == action && type != null) {
             if (type.startsWith("image/")) {
-                handleSendImage(intent) // Handle single image being sent
+                handleSendImage(intent)
             } else {
                 handleSendText(intent)
             }
@@ -79,36 +73,30 @@ class MainActivity : AppCompatActivity() {
     val TAG = "MainActivity"
     private fun handleSendText(intent: Intent) {
         intent.getStringExtra(Intent.EXTRA_TEXT)?.let {
-            // Update UI to reflect text being shared
             Log.d(TAG, "handleSendText: $it")
-            //create a new document
         }
     }
 
     override fun onStart() {
         super.onStart()
-        // Start listening for authentication state changes
         auth.addAuthStateListener(authStateListener)
     }
 
     override fun onStop() {
         super.onStop()
-        // Stop listening to avoid memory leaks
         auth.removeAuthStateListener(authStateListener)
     }
 
     private fun updateToolbarTitle(user: com.google.firebase.auth.FirebaseUser?) {
 
         if (user != null) {
-            // User is signed in. Use their display name, or fall back to email.
             val displayName = user.displayName?.ifEmpty { user.email } ?: user.email
             if (!displayName.isNullOrBlank()) {
                 supportActionBar?.subtitle = displayName
             } else {
-                supportActionBar?.subtitle = "displayName is null" // Fallback if no name/email
+                supportActionBar?.subtitle = "displayName is null"
             }
         } else {
-            // No user is signed in
             supportActionBar?.subtitle = "No user!"
         }
     }
@@ -116,7 +104,6 @@ class MainActivity : AppCompatActivity() {
     private fun handleSendImage(intent: Intent) {
         (intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM))?.let {
             val imageUri: Uri? = intent.getParcelableExtra(Intent.EXTRA_STREAM)
-            // Update UI to reflect image being shared
             Log.d(TAG, "handleSendImage: $it")
             val floatingAddImage = FloatingAddImage(this)
             floatingAddImage.show()
@@ -124,17 +111,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
         menuInflater.inflate(R.menu.menu_main, menu)
         return true
     }
 
     fun getCacheSize(context: Context): Long {
         var size: Long = 0
-        // context.cacheDir gives you the path to your app's internal cache
         val cacheDirectory: File = context.cacheDir
-        // walkTopDown() iterates through all files and subdirectories
-        // forEach adds up the size of each file
         cacheDirectory.walkTopDown().forEach { file ->
             if (file.isFile) {
                 size += file.length()
@@ -144,11 +127,6 @@ class MainActivity : AppCompatActivity() {
         return size
     }
 
-    /**
-     * Formats the cache size from bytes into a human-readable string (KB, MB, GB).
-     * @param sizeInBytes The size in bytes.
-     * @return A formatted string like "12.34 MB".
-     */
     fun formatSize(sizeInBytes: Long): String {
         if (sizeInBytes < 1024) return "$sizeInBytes B"
         val kb = sizeInBytes / 1024
@@ -160,22 +138,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
         return when (item.itemId) {
             R.id.action_scanNewQrCode -> {
-                // --- THIS IS THE TRIGGER ---
-                // Notify the SharedViewModel that the user wants to scan.
-                // DO NOT call any fragment-specific code here.
                 sharedViewModel.requestAction(NoteAction.SCAN_NEW_QR_CODE)
-
-                true // Return true to indicate the click was handled
+                true
             }
 
             R.id.action_login -> {
-                val intent = Intent(this, LoginActivity::class.java)
-                startActivity(intent)
+                // If already logged in, do nothing (or show a message)
+                if (FirebaseAuth.getInstance().currentUser != null) {
+                    Toast.makeText(this, "Already logged in", Toast.LENGTH_SHORT).show()
+                } else {
+                    startActivity(Intent(this, LoginActivity::class.java))
+                }
                 true
             }
 
@@ -189,15 +164,13 @@ class MainActivity : AppCompatActivity() {
                 true
             }
 
-
-
             R.id.action_settings -> {
                 val totalCacheSizeBytes = getCacheSize(this)
                 val builder = AlertDialog.Builder(this, R.style.AlertDialogTheme)
                 val formattedCacheSize = formatSize(totalCacheSizeBytes)
                 builder.setTitle("QrNote App Options")
                     .setMessage("Cache Size $formattedCacheSize\nCache folder: ${cacheDir.absolutePath}")
-                    .setNeutralButton("Clear Cache") { dialog, _ ->
+                    .setNeutralButton("Clear Cache") { _, _ ->
                         val deleted = cacheDir.deleteRecursively()
                         if (deleted) {
                             Toast.makeText(
@@ -206,11 +179,11 @@ class MainActivity : AppCompatActivity() {
                         } else {
                             Toast.makeText(this, "Failed to clear cache", Toast.LENGTH_SHORT).show()
                         }
-                    }.setNegativeButton("Cancel") { dialog, _ ->
+                    }
+                    .setNegativeButton("Cancel") { dialog, _ ->
                         dialog.dismiss()
-                    }.show()/*
-                val intent = Intent(this, SettingsActivity::class.java)
-                startActivity(intent)*/
+                    }
+                    .show()
                 true
             }
 

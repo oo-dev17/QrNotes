@@ -42,29 +42,7 @@ class LoginActivity : AppCompatActivity() {
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        username = binding.username
-        password = binding.password
         login = binding.login
-
-        // disable login button unless both username / password is valid
-        updateButton()
-        username.afterTextChanged { updateButton() }
-        password.afterTextChanged { updateButton() }
-
-        login.setOnClickListener {
-            auth.signInWithEmailAndPassword(username.text.toString(), password.text.toString())
-                .addOnCompleteListener(this) { task ->
-                    if (task.isSuccessful) {
-                        Toast.makeText(this, "Login successful", Toast.LENGTH_SHORT).show()
-                        finish()
-                    } else {
-                        Toast.makeText(this, "Login failed", Toast.LENGTH_SHORT).show()
-                    }
-                }
-                .addOnFailureListener {
-                    showLegacyLoginFailureDialog()
-                }
-        }
 
         // New: Google Sign-In
         binding.googleSignIn?.setOnClickListener {
