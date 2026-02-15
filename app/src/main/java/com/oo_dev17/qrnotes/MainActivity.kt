@@ -8,11 +8,13 @@ import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
-import androidx.activity.result.launch
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
@@ -20,9 +22,8 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.oo_dev17.qrnotes.databinding.ActivityMainBinding
+import kotlinx.coroutines.launch
 import java.io.File
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : AppCompatActivity() {
     private lateinit var sharedDb: FirebaseFirestore
@@ -30,9 +31,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var auth: FirebaseAuth
     private val sharedViewModel: SecondSharedViewModel by viewModels()
+
+    private var optionsMenu: Menu? = null
+
     private val authStateListener: FirebaseAuth.AuthStateListener
         get() = FirebaseAuth.AuthStateListener { firebaseAuth ->
-            updateToolbarTitle(firebaseAuth.currentUser)
+            val user = firebaseAuth.currentUser
+            updateToolbarTitle(user)
+            updateMenuForAuthState(user)
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,7 +73,8 @@ class MainActivity : AppCompatActivity() {
                 handleSendText(intent)
             }
         }
-        updateToolbarTitle(FirebaseAuth.getInstance().currentUser)
+
+        updateToolbarTitle(auth.currentUser)
     }
 
     val TAG = "MainActivity"
@@ -88,7 +95,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateToolbarTitle(user: com.google.firebase.auth.FirebaseUser?) {
-
         if (user != null) {
             val displayName = user.displayName?.ifEmpty { user.email } ?: user.email
             if (!displayName.isNullOrBlank()) {
@@ -101,9 +107,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateMenuForAuthState(user: com.google.firebase.auth.FirebaseUser?) {
+        // Menu might not be inflated yet
+        val menu = optionsMenu ?: return
+        val loggedIn = user != null
+
+        menu.findItem(R.id.action_login)?.isVisible = !loggedIn
+        menu.findItem(R.id.action_logout)?.isVisible = loggedIn
+    }
+
     private fun handleSendImage(intent: Intent) {
-        (intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM))?.let {
-            val imageUri: Uri? = intent.getParcelableExtra(Intent.EXTRA_STREAM)
+        intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let {
             Log.d(TAG, "handleSendImage: $it")
             val floatingAddImage = FloatingAddImage(this)
             floatingAddImage.show()
@@ -112,6 +126,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
+        optionsMenu = menu
+
+        // Set correct initial visibility
+        updateMenuForAuthState(auth.currentUser)
+
         return true
     }
 
@@ -145,11 +164,25 @@ class MainActivity : AppCompatActivity() {
             }
 
             R.id.action_login -> {
-                // If already logged in, do nothing (or show a message)
-                if (FirebaseAuth.getInstance().currentUser != null) {
-                    Toast.makeText(this, "Already logged in", Toast.LENGTH_SHORT).show()
-                } else {
-                    startActivity(Intent(this, LoginActivity::class.java))
+                // Start Google sign-in directly (no LoginActivity)
+                val serverClientId = getString(R.string.default_web_client_id)
+                lifecycleScope.launch {
+                    GoogleSignInHelper.signIn(
+                        context = this@MainActivity,
+                        auth = auth,
+                        serverClientId = serverClientId,
+                        onSuccess = {
+                            Toast.makeText(this@MainActivity, "Login successful", Toast.LENGTH_SHORT)
+                                .show()
+                        },
+                        onFailure = { e ->
+                            Toast.makeText(
+                                this@MainActivity,
+                                e.message ?: "Google login failed",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    )
                 }
                 true
             }

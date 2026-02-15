@@ -674,11 +674,25 @@ class SecondFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // If this fragment was opened without a QrNote argument, avoid crashing.
+        val currentQrNote = qrNote
+        if (currentQrNote?.documentId.isNullOrBlank()) {
+            Log.e("SecondFragment", "onViewCreated: qrNote/documentId is null. Aborting setup.")
+            Snackbar.make(view, "Error: note not found", Snackbar.LENGTH_LONG).show()
+            return
+        }
+
         binding.tileText.setOnClickListener {
+            val safeQrNote = qrNote
+            if (safeQrNote == null) {
+                Snackbar.make(requireView(), "Error: note not loaded", Snackbar.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
             val builder = AlertDialog.Builder(requireContext(), R.style.AlertDialogTheme)
             builder.setTitle("Change Title")
             val input = EditText(requireContext()).apply {
-                setText(qrNote!!.title)
+                setText(safeQrNote.title.orEmpty())
             }
             builder.setView(input)
             builder.setPositiveButton("Change") { dialog, _ ->
@@ -693,8 +707,8 @@ class SecondFragment : Fragment() {
                         ).show()
                         return@setPositiveButton
                     }
-                    notesCollection.document(qrNote!!.documentId!!)
-                        .update(qrNote!!::title.name, title)
+                    notesCollection.document(safeQrNote.documentId!!)
+                        .update(safeQrNote::title.name, title)
                 } else {
                     Snackbar.make(
                         requireView(),
@@ -720,7 +734,8 @@ class SecondFragment : Fragment() {
             ).show()
             return
         }
-        val docRef = notesCollection.document(qrNote!!.documentId!!)
+
+        val docRef = notesCollection.document(currentQrNote.documentId!!)
         firestoreListener = docRef.addSnapshotListener { snapshot, error ->
             if (error != null) {
                 Log.e("FirestoreListener", "Listen failed.", error)
@@ -766,17 +781,13 @@ class SecondFragment : Fragment() {
     }
 
     private fun saveText() {
-        val notesCollection = FirestoreManager.getUserNotesCollection()
-        if (notesCollection == null) {
-            Toast.makeText(
-                requireContext(),
-                "User not logged in? Notes empty",
-                Toast.LENGTH_SHORT
-            ).show()
-            return
-        }
-        notesCollection.document(qrNote!!.documentId!!)
-            .update(qrNote!!::content.name, _binding!!.edittextSecond.text.toString())
+        val safeQrNote = qrNote
+        val safeBinding = _binding
+        if (safeQrNote?.documentId.isNullOrBlank() || safeBinding == null) return
+
+        val notesCollection = FirestoreManager.getUserNotesCollection() ?: return
+        notesCollection.document(safeQrNote.documentId!!)
+            .update(safeQrNote::content.name, safeBinding.edittextSecond.text.toString())
     }
 
     private val allowedDocumentMimeTypesAll = arrayOf(
