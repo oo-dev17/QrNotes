@@ -142,6 +142,10 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
                 try {
                     notesCollection?.add(note)?.addOnSuccessListener { docRef ->
                         Log.d("FirestoreAccess", "Note added with ID: ${docRef.id}")
+
+                        // IMPORTANT: attach Firestore document id to the note before using it
+                        note.documentId = docRef.id
+
                         onNewQrNote(note)
 
                         val bundle = Bundle().apply {
@@ -154,9 +158,13 @@ class FirstFragment : Fragment(), ItemClickListener, NewQrNoteListener {
 
                     }?.addOnFailureListener { e ->
                         Log.w("Firestore", "Error adding note", e)
+                        Toast.makeText(requireContext(), "Failed to create note: ${e.message}", Toast.LENGTH_SHORT)
+                            .show()
                     }
                 } catch (e: Exception) {
                     Log.e("Firestore", "Error adding note", e)
+                    Toast.makeText(requireContext(), "Failed to create note: ${e.message}", Toast.LENGTH_SHORT)
+                        .show()
                 }
             } else {
                 Toast.makeText(requireContext(), "Title cannot be empty", Toast.LENGTH_SHORT).show()
