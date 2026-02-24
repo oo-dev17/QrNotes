@@ -88,7 +88,18 @@
                 app:layout_constraintTop_toBottomOf="@id/recycler_view_files" />
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
-
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabAddSketch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="168dp"
+        android:layout_marginBottom="30dp"
+        android:scaleType="center"
+        android:src="@drawable/sketch"
+        android:textColor="@color/black"
+        android:textSize="46sp"
+        app:maxImageSize="40dp" />
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAddPdf"
         android:layout_width="wrap_content"

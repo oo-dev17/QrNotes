@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <com.oo_dev17.qrnotes.DrawingView
+        android:id="@+id/drawingView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnClear"
+            android:textSize="10dp"
+            android:padding="0dp"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:text="Clear"
+            android:layout_height="wrap_content"/>
+
+        <Button
+            android:id="@+id/btnRed"
+            android:layout_width="0dp"
+            android:textSize="10dp"
+            android:padding="0dp"
+            android:layout_weight="1"
+            android:text="Red"
+            android:layout_height="wrap_content"/>
+        <Button
+            android:id="@+id/btnUndo"
+            android:layout_width="0dp"
+            android:textSize="10dp"
+            android:padding="0dp"
+            android:layout_weight="1"
+            android:text="Undo"
+            android:layout_height="wrap_content"/>
+        <Button
+            android:id="@+id/btnRedo"
+            android:layout_width="0dp"
+            android:textSize="10dp"
+            android:padding="0dp"
+            android:layout_weight="1"
+            android:text="Redo"
+            android:layout_height="wrap_content"/>
+        <Button
+            android:id="@+id/btnBlue"
+            android:layout_width="0dp"
+            android:textSize="10dp"
+            android:padding="0dp"
+            android:layout_weight="1"
+            android:text="Blue"
+            android:layout_height="wrap_content"/>
+        <Button
+            android:id="@+id/btnErase"
+            android:layout_width="0dp"
+            android:textSize="10dp"
+            android:padding="0dp"
+            android:layout_weight="1"
+            android:text="Erase"
+            android:layout_height="wrap_content"/>
+    </LinearLayout>
+
+</LinearLayout>
