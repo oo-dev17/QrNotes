@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 
 class DrawingActivity : AppCompatActivity() {
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_drawing)
@@ -37,9 +38,6 @@ class DrawingActivity : AppCompatActivity() {
         }
         btnRedo.setOnClickListener {
             drawingView.redo()
-        }
-        btnRedo.setOnClickListener {
-            drawingView.erase()
         }
         btnErase.setOnClickListener{
             drawingView.erase()
