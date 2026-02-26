@@ -14,24 +14,26 @@ class DrawingActivity : AppCompatActivity() {
 
         val drawingView = findViewById<DrawingView>(R.id.drawingView)
         val btnClear = findViewById<Button>(R.id.btnClear)
-        val btnRed = findViewById<Button>(R.id.btnRed)
-        val btnBlue = findViewById<Button>(R.id.btnBlue)
+        val btnColor = findViewById<Button>(R.id.btnColor)
+        val btnRectangle = findViewById<Button>(R.id.btnRectangle)
         val btnUndo = findViewById<Button>(R.id.btnUndo)
         val btnRedo = findViewById<Button>(R.id.btnRedo)
         val btnErase = findViewById<Button>(R.id.btnErase)
 
-        drawingView.attachButton(btnErase)
+        drawingView.attachEraseButton(btnErase)
+        drawingView.attachColorButton(btnColor)
+        drawingView.attachRectangleButton(btnRectangle)
 
         btnClear.setOnClickListener {
             drawingView.clearCanvas()
         }
 
-        btnRed.setOnClickListener {
-            drawingView.setColor(Color.RED)
+        btnColor.setOnClickListener {
+            drawingView.changeColor()
         }
 
-        btnBlue.setOnClickListener {
-            drawingView.setColor(Color.BLUE)
+        btnRectangle.setOnClickListener {
+            drawingView.rectangleMode()
         }
         btnUndo.setOnClickListener {
             drawingView.undo()
