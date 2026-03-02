@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
@@ -14,57 +15,86 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnClear"
-            android:textSize="10dp"
+            android:textSize="10sp"
             android:padding="0dp"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:text="Clear"
-            android:layout_height="wrap_content"/>
+            android:layout_height="40dp"
+            android:minHeight="0dp"/>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnColor"
             android:layout_width="0dp"
-            android:textSize="10dp"
+            android:textSize="44sp"
             android:padding="0dp"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
+            app:icon="@drawable/circle"
+            app:iconSize="22dp"
+            app:iconGravity="textTop"
             android:layout_weight="1"
-            android:text="●"
-            android:layout_height="wrap_content"/>
-        <Button
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:minHeight="0dp"/>
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnUndo"
             android:layout_width="0dp"
-            android:textSize="10dp"
+            android:textSize="10sp"
             android:padding="0dp"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
             android:layout_weight="1"
             android:text="Undo"
-            android:layout_height="wrap_content"/>
-        <Button
+            android:layout_height="40dp"
+            android:minHeight="0dp"/>
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRedo"
             android:layout_width="0dp"
-            android:textSize="10dp"
+            android:textSize="10sp"
             android:padding="0dp"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
             android:layout_weight="1"
             android:text="Redo"
-            android:layout_height="wrap_content"/>
-        <Button
-            android:id="@+id/btnRectangle"
+            android:layout_height="40dp"
+            android:minHeight="0dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnGeometry"
             android:layout_width="0dp"
-            android:textSize="10dp"
             android:padding="0dp"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
             android:layout_weight="1"
-            android:text="□"
-            android:layout_height="wrap_content"/>
-        <Button
+            app:icon="@drawable/rectangle"
+            android:text=""
+            android:gravity="center"
+            app:iconGravity="textTop"
+            android:layout_height="40dp"
+            android:minHeight="0dp"/>
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnErase"
             android:layout_width="0dp"
-            android:textSize="10dp"
+            android:textSize="10sp"
             android:padding="0dp"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
             android:layout_weight="1"
             android:text="Erase"
-            android:layout_height="wrap_content"/>
+            android:layout_height="40dp"
+            android:minHeight="0dp"/>
     </LinearLayout>
 
 </LinearLayout>
