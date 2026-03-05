@@ -19,6 +19,18 @@
         android:gravity="center_vertical">
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnToolMode"
+            android:layout_width="0dp"
+            android:textSize="10sp"
+            android:padding="0dp"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
+            android:layout_weight="1"
+            android:text="Erase"
+            android:layout_height="40dp"
+            android:minHeight="0dp"/>
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnClear"
             android:textSize="10sp"
             android:padding="0dp"
@@ -84,17 +96,7 @@
             android:layout_height="40dp"
             android:minHeight="0dp"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnErase"
-            android:layout_width="0dp"
-            android:textSize="10sp"
-            android:padding="0dp"
-            android:paddingTop="0dp"
-            android:paddingBottom="0dp"
-            android:layout_weight="1"
-            android:text="Erase"
-            android:layout_height="40dp"
-            android:minHeight="0dp"/>
+
     </LinearLayout>
 
 </LinearLayout>

@@ -17,9 +17,9 @@ class DrawingActivity : AppCompatActivity() {
         val btnGeometry = findViewById<Button>(R.id.btnGeometry)
         val btnUndo = findViewById<Button>(R.id.btnUndo)
         val btnRedo = findViewById<Button>(R.id.btnRedo)
-        val btnErase = findViewById<Button>(R.id.btnErase)
+        val btnToolMode = findViewById<Button>(R.id.btnToolMode)
 
-        drawingView.attachEraseButton(btnErase)
+        drawingView.attachEraseButton(btnToolMode)
         drawingView.attachColorButton(btnColor)
         drawingView.attachRectangleButton(btnGeometry)
 
@@ -40,8 +40,8 @@ class DrawingActivity : AppCompatActivity() {
         btnRedo.setOnClickListener {
             drawingView.redo()
         }
-        btnErase.setOnClickListener{
-            drawingView.erase()
+        btnToolMode.setOnClickListener{
+            drawingView.switchToolMode()
         }
     }
 

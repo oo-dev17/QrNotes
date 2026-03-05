@@ -336,7 +336,7 @@ class DrawingView(context: Context, attrs: AttributeSet?) : View(context, attrs)
         invalidate()
     }
 
-    fun erase() {
+    fun switchToolMode() {
         setMode(if (currentMode == ToolMode.ERASE) ToolMode.DRAW else if (currentMode == ToolMode.DRAW) ToolMode.SELECT else ToolMode.ERASE)
         eraseButton.text = currentMode.toString()
         if (currentMode == ToolMode.ERASE) {
@@ -346,6 +346,7 @@ class DrawingView(context: Context, attrs: AttributeSet?) : View(context, attrs)
         } else {
             clearHighlight(eraseButton)
         }
+        Toast.makeText(context, "Mode set to: $currentMode", Toast.LENGTH_SHORT).show()
     }
 
     private fun isStrokeHit(stroke: Stroke, x: Float, y: Float): Boolean {
