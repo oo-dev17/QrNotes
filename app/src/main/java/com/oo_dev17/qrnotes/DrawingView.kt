@@ -14,6 +14,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
+import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.view.ViewCompat
@@ -125,34 +126,29 @@ class DrawingView(context: Context, attrs: AttributeSet?) : View(context, attrs)
                         undoneActions.clear()
                     }
                 } else if (currentMode == ToolMode.SELECT) {
-                    startX = x
-                    startY = y
                 }
             }
 
             MotionEvent.ACTION_MOVE -> {
                 if (currentMode == ToolMode.DRAW) {
-                    when (geometryMode) {
-                        GeometryMode.RECTANGLE -> {
-                            currentPath?.apply {
-                                reset()
-                                val rect = RectF(startX, startY, x, y)
-                                rect.sort()
-                                addRect(rect, Path.Direction.CW)
-                            }
+                    if (geometryMode== GeometryMode.RECTANGLE) {
+                        currentPath?.apply {
+                            reset()
+                            val rect = RectF(startX, startY, x, y)
+                            rect.sort()
+                            addRect(rect, Path.Direction.CW)
                         }
-                        GeometryMode.CIRCLE -> {
-                            currentPath?.apply {
-                                reset()
-                                val dx = x - startX
-                                val dy = y - startY
-                                val radius = kotlin.math.hypot(dx.toDouble(), dy.toDouble()).toFloat()
-                                addCircle(startX, startY, radius, Path.Direction.CW)
-                            }
+                    } else if (geometryMode == GeometryMode.CIRCLE) {
+                        // draw circle centered at startX,startY with radius to current point
+                        currentPath?.apply {
+                            reset()
+                            val dx = x - startX
+                            val dy = y - startY
+                            val radius = kotlin.math.hypot(dx.toDouble(), dy.toDouble()).toFloat()
+                            addCircle(startX, startY, radius, Path.Direction.CW)
                         }
-                        GeometryMode.LINE -> {
-                            currentPath?.lineTo(x, y)
-                        }
+                    } else {
+                        currentPath?.lineTo(x, y)
                     }
                 } else if (currentMode == ToolMode.ERASE) {
                     val erasedStrokes = mutableListOf<Stroke>()
@@ -167,13 +163,6 @@ class DrawingView(context: Context, attrs: AttributeSet?) : View(context, attrs)
                     if (erasedStrokes.isNotEmpty()) {
                         actions.add(Action.Erase(erasedStrokes))
                         undoneActions.clear()
-                    }
-                } else if (currentMode == ToolMode.SELECT) {
-                    currentPath?.apply {
-                        reset()
-                        val rect = RectF(startX, startY, x, y)
-                        rect.sort()
-                        addRect(rect, Path.Direction.CW)
                     }
                 }
             }
@@ -233,18 +222,26 @@ class DrawingView(context: Context, attrs: AttributeSet?) : View(context, attrs)
     }
 
     fun geometryMode() {
-        if (geometryMode == GeometryMode.RECTANGLE) {
-            geometryMode = GeometryMode.CIRCLE
-            setButtonIcon(geometryButton, R.drawable.open_circle)
+        // cycle geometry mode and update icon + show a short message
+        val message = when (geometryMode) {
+            GeometryMode.LINE -> {
+                geometryMode = GeometryMode.RECTANGLE
+                setButtonIcon(geometryButton, R.drawable.rectangle)
+                "Rectangle"
+            }
+            GeometryMode.RECTANGLE -> {
+                geometryMode = GeometryMode.CIRCLE
+                setButtonIcon(geometryButton, R.drawable.open_circle)
+                "Circle"
+            }
+            GeometryMode.CIRCLE -> {
+                geometryMode = GeometryMode.LINE
+                setButtonIcon(geometryButton, R.drawable.line)
+                "Line"
+            }
         }
-        else if (geometryMode == GeometryMode.CIRCLE) {
-            geometryMode = GeometryMode.LINE
-            setButtonIcon(geometryButton, R.drawable.line)
-        }
-        else if (geometryMode == GeometryMode.LINE) {
-            geometryMode = GeometryMode.RECTANGLE
-            setButtonIcon(geometryButton, R.drawable.rectangle)
-        }
+        // show a small toast as a bubble/tea message
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 
     // helper to set icon and tint for any button
@@ -294,7 +291,6 @@ class DrawingView(context: Context, attrs: AttributeSet?) : View(context, attrs)
         currentColor = listOfAvailableColors[index]
         // prefer tinting an icon if present, otherwise fall back to text color
         tintExistingButtonIcon(colorButton, currentColor)
-        //btnColor.iconTint = android.content.res.ColorStateList.valueOf(android.graphics.Color.WHITE)
         currentPaint = createPaint(currentColor, currentPaint.strokeWidth)
     }
 
