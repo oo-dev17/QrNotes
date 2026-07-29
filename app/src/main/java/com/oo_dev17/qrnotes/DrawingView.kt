@@ -1,7 +1,9 @@
 package com.oo_dev17.qrnotes
 
 import android.content.Context
+import android.content.ContentValues
 import android.content.res.ColorStateList
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -10,15 +12,22 @@ import android.graphics.PorterDuff
 import android.graphics.RectF
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.view.ViewCompat
 import com.google.android.material.button.MaterialButton
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 class DrawingView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
@@ -45,6 +54,7 @@ class DrawingView(context: Context, attrs: AttributeSet?) : View(context, attrs)
     private var startX = 0f
     private var startY = 0f
 
+
     private fun createPaint(color: Int, strokeWidth: Float): Paint {
         return Paint().apply {
             this.color = color
@@ -64,7 +74,7 @@ class DrawingView(context: Context, attrs: AttributeSet?) : View(context, attrs)
         colorButton = btn
     }
 
-    fun attachRectangleButton(btn: Button) {
+    fun attachGeomertryButton(btn: Button) {
         geometryButton = btn
         saveOriginalStateIfNeeded(btn)
     }
@@ -361,9 +371,100 @@ class DrawingView(context: Context, attrs: AttributeSet?) : View(context, attrs)
     }
 
     fun clearCanvas() {
+        AlertDialog.Builder(context, R.style.AlertDialogTheme)
+            .setTitle("Delete Image")
+            .setMessage("Are you sure you want to delete all content?")
+            .setPositiveButton("Yes") { d, _ ->
         strokes.clear()
         undoneStrokes.clear()
-        invalidate()
+        invalidate()}.setNegativeButton("Cancel") { d, _ ->
+                d.dismiss()
+            }.show()
+    }
+
+    /**
+     * Save current view content into a PNG file on disk.
+     * Returns true on success.
+     */
+    fun saveAsPngToFile(file: File): Boolean {
+        if (width <= 0 || height <= 0) return false
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        // draw background if present, otherwise white
+        background?.let {
+            it.setBounds(0, 0, width, height)
+            it.draw(canvas)
+        } ?: canvas.drawColor(Color.WHITE)
+        // draw the view into the canvas
+        draw(canvas)
+
+        return try {
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+            true
+        } catch (e: IOException) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    /**
+     * Save current view into the system MediaStore (Pictures/QrNotes) and return the Uri, or null on failure.
+     */
+    fun saveAsPngToMediaStore(context: Context, displayName: String = "drawing_${System.currentTimeMillis()}.png"): Uri? {
+        if (width <= 0 || height <= 0) return null
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        background?.let {
+            it.setBounds(0, 0, width, height)
+            it.draw(canvas)
+        } ?: canvas.drawColor(Color.WHITE)
+        draw(canvas)
+
+        val resolver = context.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/QrNotes")
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }
+        }
+
+        val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return null
+        return try {
+            resolver.openOutputStream(uri).use { out ->
+                if (out == null) throw IOException("Unable to open output stream")
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                values.clear()
+                values.put(MediaStore.Images.Media.IS_PENDING, 0)
+                resolver.update(uri, values, null, null)
+            }
+            uri
+        } catch (e: Exception) {
+            e.printStackTrace()
+            resolver.delete(uri, null, null)
+            null
+        }
+    }
+
+
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+
+            try {
+                val name =  "drawing_${System.currentTimeMillis()}.png"
+                // Best-effort save; avoid blocking UI for long — we keep it synchronous but small images should be fine.
+                saveAsPngToMediaStore(context, name)
+            } catch (e: Exception) {
+                // swallow errors; saving on exit should not crash the app
+                e.printStackTrace()
+            }
+
     }
 
     enum class ToolMode {

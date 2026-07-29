@@ -26,7 +26,7 @@
             android:paddingTop="0dp"
             android:paddingBottom="0dp"
             android:layout_weight="1"
-            android:text="Erase"
+            android:text="Draw"
             android:layout_height="40dp"
             android:minHeight="0dp"/>
 
@@ -89,7 +89,7 @@
             android:paddingTop="0dp"
             android:paddingBottom="0dp"
             android:layout_weight="1"
-            app:icon="@drawable/rectangle"
+            app:icon="@drawable/line"
             android:text=""
             android:gravity="center"
             app:iconGravity="textTop"
