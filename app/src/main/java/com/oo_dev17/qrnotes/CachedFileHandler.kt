@@ -4,6 +4,8 @@ import ImageAdapter
 import android.R
 import android.content.Context
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.core.net.toUri
 import com.google.android.gms.tasks.Tasks
@@ -81,6 +83,14 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
         }
     }
 
+    /**
+     * Upload a file for the given QrNote / category. This enforces that uploads are tied to a QrNote.
+     */
+    fun uploadFile(qrNote: QrNote, category: Category, file: File) {
+        // Delegate to uploadToCloud to keep a single implementation
+        uploadToCloud(qrNote, file, category)
+    }
+
     fun storeSelectedImageInCloudAndCache(
         imageUri: Uri,
         qrNote: QrNote,
@@ -100,8 +110,13 @@ class CachedFileHandler(private val storageRef: StorageReference, val context: C
         }
 
         if (outputFile != null && outputFile.exists()) {
-            imageAdapter?.imageItems?.add(ImageItem.FileImage(outputFile))
-            imageAdapter?.notifyItemInserted(imageAdapter.imageItems.size - 1)
+            // Ensure UI updates happen on the main thread
+            imageAdapter?.let { adapter ->
+                Handler(Looper.getMainLooper()).post {
+                    adapter.imageItems.add(ImageItem.FileImage(outputFile))
+                    adapter.notifyItemInserted(adapter.imageItems.size - 1)
+                }
+            }
 
             uploadToCloud(qrNote, outputFile, CachedFileHandler.Category.Images)
             return true

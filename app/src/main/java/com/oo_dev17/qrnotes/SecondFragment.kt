@@ -94,6 +94,23 @@ class SecondFragment : Fragment() {
             }
         }
 
+    // Launcher for DrawingActivity so we can receive the filename of the created drawing
+    private val drawingActivityLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == android.app.Activity.RESULT_OK) {
+                val fileName = result.data?.getStringExtra("newImageFileName") ?: return@registerForActivityResult
+                val folder = qrNote?.ImageSubfolder() ?: return@registerForActivityResult
+                val file = File(folder, fileName)
+
+                if (::imageAdapter.isInitialized) {
+                    activity?.runOnUiThread {
+                        imageAdapter.imageItems.add(ImageItem.FileImage(file))
+                        imageAdapter.notifyItemInserted(imageAdapter.imageItems.size - 1)
+                    }
+                }
+            }
+        }
+
     // --- Activity Result API launchers ---
 
     // Gallery image picker
@@ -126,7 +143,7 @@ class SecondFragment : Fragment() {
                     fileName = if (!displayName.contains(".")) {
                         val extension =
                             MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
-                        if (extension.isNullOrBlank()) displayName else "$displayName.$extension"
+                        if (extension.isNullOrBlank()) displayName else "${displayName}.$extension"
                     } else {
                         displayName
                     }
@@ -241,7 +258,12 @@ class SecondFragment : Fragment() {
             openDocumentLauncher.launch(arrayOf("application/pdf"))
         }
         binding.fabAddSketch.setOnClickListener {
-            startActivity(Intent(requireContext(), DrawingActivity::class.java))
+            // Pass the current QrNote so DrawingActivity can save into this note's image folder
+            val intent = Intent(requireContext(), DrawingActivity::class.java)
+            qrNote?.let {
+                intent.putExtra("qrNote", it)
+            }
+            drawingActivityLauncher.launch(intent)
         }
         Linkify.addLinks(textviewSecond, Linkify.WEB_URLS)
         try {
